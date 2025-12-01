@@ -12,22 +12,31 @@ declare global {
   var sandboxState: SandboxState;
 }
 
+// Generate unique request ID for tracing
+let requestCounter = 0;
+
 export async function POST() {
+  const reqId = `create-${++requestCounter}-${Date.now()}`;
   try {
-    console.log('[create-ai-sandbox-v2] Creating sandbox...');
+    console.log(`[create-ai-sandbox-v2][${reqId}] === STARTING SANDBOX CREATION ===`);
+    console.log(`[create-ai-sandbox-v2][${reqId}] global.activeSandboxProvider exists: ${!!global.activeSandboxProvider}`);
+    console.log(`[create-ai-sandbox-v2][${reqId}] global.sandboxData: ${JSON.stringify(global.sandboxData || null)}`);
     
     // Clean up all existing sandboxes
-    console.log('[create-ai-sandbox-v2] Cleaning up existing sandboxes...');
+    console.log(`[create-ai-sandbox-v2][${reqId}] Cleaning up existing sandboxes...`);
     await sandboxManager.terminateAll();
+    console.log(`[create-ai-sandbox-v2][${reqId}] After terminateAll - global.activeSandboxProvider: ${!!global.activeSandboxProvider}`);
     
     // Also clean up legacy global state
     if (global.activeSandboxProvider) {
+      console.log(`[create-ai-sandbox-v2][${reqId}] Terminating legacy global sandbox...`);
       try {
         await global.activeSandboxProvider.terminate();
       } catch (e) {
-        console.error('Failed to terminate legacy global sandbox:', e);
+        console.error(`[create-ai-sandbox-v2][${reqId}] Failed to terminate legacy global sandbox:`, e);
       }
       global.activeSandboxProvider = null;
+      console.log(`[create-ai-sandbox-v2][${reqId}] Set global.activeSandboxProvider = null`);
     }
     
     // Clear existing files tracking
@@ -38,17 +47,24 @@ export async function POST() {
     }
 
     // Create new sandbox using factory
+    console.log(`[create-ai-sandbox-v2][${reqId}] Creating provider via SandboxFactory...`);
     const provider = SandboxFactory.create();
+    console.log(`[create-ai-sandbox-v2][${reqId}] Provider created, now creating sandbox...`);
     const sandboxInfo = await provider.createSandbox();
+    console.log(`[create-ai-sandbox-v2][${reqId}] Sandbox created with ID: ${sandboxInfo.sandboxId}`);
     
-    console.log('[create-ai-sandbox-v2] Setting up Vite React app...');
+    console.log(`[create-ai-sandbox-v2][${reqId}] Setting up Vite React app...`);
     await provider.setupViteApp();
+    console.log(`[create-ai-sandbox-v2][${reqId}] Vite setup complete`);
     
     // Register with sandbox manager
+    console.log(`[create-ai-sandbox-v2][${reqId}] Registering sandbox ${sandboxInfo.sandboxId} with sandboxManager...`);
     sandboxManager.registerSandbox(sandboxInfo.sandboxId, provider);
     
     // Also store in legacy global state for backward compatibility
+    console.log(`[create-ai-sandbox-v2][${reqId}] Setting global.activeSandboxProvider...`);
     global.activeSandboxProvider = provider;
+    console.log(`[create-ai-sandbox-v2][${reqId}] global.activeSandboxProvider set: ${!!global.activeSandboxProvider}`);
     global.sandboxData = {
       sandboxId: sandboxInfo.sandboxId,
       url: sandboxInfo.url
@@ -68,7 +84,11 @@ export async function POST() {
       }
     };
     
-    console.log('[create-ai-sandbox-v2] Sandbox ready at:', sandboxInfo.url);
+    console.log(`[create-ai-sandbox-v2][${reqId}] === SANDBOX CREATION COMPLETE ===`);
+    console.log(`[create-ai-sandbox-v2][${reqId}] Sandbox ID: ${sandboxInfo.sandboxId}`);
+    console.log(`[create-ai-sandbox-v2][${reqId}] URL: ${sandboxInfo.url}`);
+    console.log(`[create-ai-sandbox-v2][${reqId}] global.activeSandboxProvider: ${!!global.activeSandboxProvider}`);
+    console.log(`[create-ai-sandbox-v2][${reqId}] global.sandboxData: ${JSON.stringify(global.sandboxData)}`);
     
     return NextResponse.json({
       success: true,

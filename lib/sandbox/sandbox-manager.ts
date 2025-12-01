@@ -11,6 +11,11 @@ interface SandboxInfo {
 class SandboxManager {
   private sandboxes: Map<string, SandboxInfo> = new Map();
   private activeSandboxId: string | null = null;
+  private instanceId = `mgr-${Date.now()}`;
+
+  constructor() {
+    console.log(`[SandboxManager] Instance created: ${this.instanceId}`);
+  }
 
   /**
    * Get or create a sandbox provider for the given sandbox ID
@@ -57,6 +62,8 @@ class SandboxManager {
    * Register a new sandbox
    */
   registerSandbox(sandboxId: string, provider: SandboxProvider): void {
+    console.log(`[SandboxManager][${this.instanceId}] registerSandbox called for: ${sandboxId}`);
+    console.log(`[SandboxManager][${this.instanceId}] Before register - sandboxes count: ${this.sandboxes.size}, activeSandboxId: ${this.activeSandboxId}`);
     this.sandboxes.set(sandboxId, {
       sandboxId,
       provider,
@@ -64,22 +71,31 @@ class SandboxManager {
       lastAccessed: new Date()
     });
     this.activeSandboxId = sandboxId;
+    console.log(`[SandboxManager][${this.instanceId}] After register - sandboxes count: ${this.sandboxes.size}, activeSandboxId: ${this.activeSandboxId}`);
+    console.log(`[SandboxManager][${this.instanceId}] Sandbox IDs in map: ${Array.from(this.sandboxes.keys()).join(', ')}`);
   }
 
   /**
    * Get the active sandbox provider
    */
   getActiveProvider(): SandboxProvider | null {
+    console.log(`[SandboxManager][${this.instanceId}] getActiveProvider called`);
+    console.log(`[SandboxManager][${this.instanceId}] activeSandboxId: ${this.activeSandboxId}, sandboxes count: ${this.sandboxes.size}`);
+    console.log(`[SandboxManager][${this.instanceId}] Sandbox IDs in map: ${Array.from(this.sandboxes.keys()).join(', ') || '(empty)'}`);
+    
     if (!this.activeSandboxId) {
+      console.log(`[SandboxManager][${this.instanceId}] No activeSandboxId set, returning null`);
       return null;
     }
     
     const sandbox = this.sandboxes.get(this.activeSandboxId);
     if (sandbox) {
       sandbox.lastAccessed = new Date();
+      console.log(`[SandboxManager][${this.instanceId}] Found active provider for ${this.activeSandboxId}`);
       return sandbox.provider;
     }
     
+    console.log(`[SandboxManager][${this.instanceId}] activeSandboxId ${this.activeSandboxId} not found in map!`);
     return null;
   }
 
@@ -87,11 +103,17 @@ class SandboxManager {
    * Get a specific sandbox provider
    */
   getProvider(sandboxId: string): SandboxProvider | null {
+    console.log(`[SandboxManager][${this.instanceId}] getProvider called for: ${sandboxId}`);
+    console.log(`[SandboxManager][${this.instanceId}] sandboxes count: ${this.sandboxes.size}`);
+    console.log(`[SandboxManager][${this.instanceId}] Sandbox IDs in map: ${Array.from(this.sandboxes.keys()).join(', ') || '(empty)'}`);
+    
     const sandbox = this.sandboxes.get(sandboxId);
     if (sandbox) {
       sandbox.lastAccessed = new Date();
+      console.log(`[SandboxManager][${this.instanceId}] Found provider for ${sandboxId}`);
       return sandbox.provider;
     }
+    console.log(`[SandboxManager][${this.instanceId}] No provider found for ${sandboxId}`);
     return null;
   }
 

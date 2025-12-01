@@ -12,6 +12,9 @@ declare global {
   var sandboxState: SandboxState;
 }
 
+// Generate unique request ID for tracing
+let applyRequestCounter = 0;
+
 interface ParsedResponse {
   explanation: string;
   template: string;
@@ -302,24 +305,35 @@ export async function POST(request: NextRequest) {
       global.existingFiles = new Set<string>();
     }
 
+    // Generate request ID for tracing
+    const reqId = `apply-${++applyRequestCounter}-${Date.now()}`;
+    console.log(`[apply-ai-code-stream][${reqId}] === STARTING APPLY ===`);
+    console.log(`[apply-ai-code-stream][${reqId}] sandboxId from request: ${sandboxId}`);
+    console.log(`[apply-ai-code-stream][${reqId}] global.activeSandboxProvider exists: ${!!global.activeSandboxProvider}`);
+    console.log(`[apply-ai-code-stream][${reqId}] global.sandboxData: ${JSON.stringify(global.sandboxData || null)}`);
+
     // Try to get provider from sandbox manager first
+    console.log(`[apply-ai-code-stream][${reqId}] Checking sandboxManager...`);
     let provider = sandboxId ? sandboxManager.getProvider(sandboxId) : sandboxManager.getActiveProvider();
+    console.log(`[apply-ai-code-stream][${reqId}] sandboxManager returned provider: ${!!provider}`);
 
     // Fall back to global state if not found in manager
     if (!provider) {
+      console.log(`[apply-ai-code-stream][${reqId}] Falling back to global.activeSandboxProvider...`);
       provider = global.activeSandboxProvider;
+      console.log(`[apply-ai-code-stream][${reqId}] global.activeSandboxProvider: ${!!provider}`);
     }
 
     // If we have a sandboxId but no provider, try to get or create one
     if (!provider && sandboxId) {
-      console.log(`[apply-ai-code-stream] No provider found for sandbox ${sandboxId}, attempting to get or create...`);
+      console.log(`[apply-ai-code-stream][${reqId}] No provider found for sandbox ${sandboxId}, attempting to get or create...`);
 
       try {
         provider = await sandboxManager.getOrCreateProvider(sandboxId);
 
         // If we got a new provider (not reconnected), we need to create a new sandbox
         if (!provider.getSandboxInfo()) {
-          console.log(`[apply-ai-code-stream] Creating new sandbox since reconnection failed for ${sandboxId}`);
+          console.log(`[apply-ai-code-stream][${reqId}] Creating new sandbox since reconnection failed for ${sandboxId}`);
           await provider.createSandbox();
           await provider.setupViteApp();
           sandboxManager.registerSandbox(sandboxId, provider);
@@ -327,7 +341,7 @@ export async function POST(request: NextRequest) {
 
         // Update legacy global state
         global.activeSandboxProvider = provider;
-        console.log(`[apply-ai-code-stream] Successfully got provider for sandbox ${sandboxId}`);
+        console.log(`[apply-ai-code-stream][${reqId}] Successfully got provider for sandbox ${sandboxId}`);
       } catch (providerError) {
         console.error(`[apply-ai-code-stream] Failed to get or create provider for sandbox ${sandboxId}:`, providerError);
         return NextResponse.json({
@@ -349,7 +363,7 @@ export async function POST(request: NextRequest) {
 
     // If we still don't have a provider, create a new one
     if (!provider) {
-      console.log(`[apply-ai-code-stream] No active provider found, creating new sandbox...`);
+      console.log(`[apply-ai-code-stream][${reqId}] !!! NO PROVIDER FOUND - CREATING NEW SANDBOX !!!`);
       try {
         const { SandboxFactory } = await import('@/lib/sandbox/factory');
         provider = SandboxFactory.create();
@@ -366,7 +380,8 @@ export async function POST(request: NextRequest) {
           url: sandboxInfo.url
         };
 
-        console.log(`[apply-ai-code-stream] Created new sandbox successfully`);
+        console.log(`[apply-ai-code-stream][${reqId}] Created new sandbox with ID: ${sandboxInfo.sandboxId}`);
+        console.log(`[apply-ai-code-stream][${reqId}] global.activeSandboxProvider now: ${!!global.activeSandboxProvider}`);
       } catch (createError) {
         console.error(`[apply-ai-code-stream] Failed to create new sandbox:`, createError);
         return NextResponse.json({
