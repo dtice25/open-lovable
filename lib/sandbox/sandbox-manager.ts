@@ -183,7 +183,8 @@ class SandboxManager {
 }
 
 // Export singleton instance
-export const sandboxManager = new SandboxManager();
+// Use existing global instance if available to persist state across hot reloads
+export const sandboxManager = global.sandboxManager || new SandboxManager();
 
 // Also maintain backward compatibility with global state
 declare global {
@@ -191,4 +192,6 @@ declare global {
 }
 
 // Ensure the global reference points to our singleton
-global.sandboxManager = sandboxManager;
+if (!global.sandboxManager) {
+  global.sandboxManager = sandboxManager;
+}
