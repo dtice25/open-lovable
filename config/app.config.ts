@@ -12,6 +12,9 @@ export const appConfig = {
       return this.timeoutMinutes * 60 * 1000;
     },
 
+    // Development server port (Vercel uses 5173 for Vite)
+    vitePort: 5173,
+
     // Development server port (Vercel Sandbox typically uses 3000 for Next.js/React)
     devPort: 3000,
 
@@ -46,6 +49,26 @@ export const appConfig = {
 
     // Working directory in sandbox
     workingDirectory: '/home/user/app',
+  },
+
+    // Daytona Sandbox Configuration
+  daytona: {
+    // Sandbox timeout in minutes
+    timeoutMinutes: 30,
+
+    // Convert to milliseconds for Daytona API
+    get timeoutMs() {
+      return this.timeoutMinutes * 60 * 1000;
+    },
+
+    // Development server port (5173 for Vite)
+    vitePort: 5173,
+
+    // Time to wait for Vite dev server to be ready (in milliseconds)
+    viteStartupDelay: 10000,
+
+    // Working directory in sandbox
+    workingDirectory: '/home/daytona',
   },
   
   // AI Model Configuration

@@ -1,6 +1,7 @@
 import { SandboxProvider, SandboxProviderConfig } from './types';
 import { E2BProvider } from './providers/e2b-provider';
 import { VercelProvider } from './providers/vercel-provider';
+import { DaytonaProvider } from './providers/daytona-provider';
 
 export class SandboxFactory {
   static create(provider?: string, config?: SandboxProviderConfig): SandboxProvider {
@@ -14,6 +15,9 @@ export class SandboxFactory {
       
       case 'vercel':
         return new VercelProvider(config || {});
+
+      case 'daytona':
+        return new DaytonaProvider(config || {});
       
       default:
         throw new Error(`Unknown sandbox provider: ${selectedProvider}. Supported providers: e2b, vercel`);
@@ -21,7 +25,7 @@ export class SandboxFactory {
   }
   
   static getAvailableProviders(): string[] {
-    return ['e2b', 'vercel'];
+    return ['e2b', 'vercel', 'daytona'];
   }
   
   static isProviderAvailable(provider: string): boolean {
@@ -33,6 +37,9 @@ export class SandboxFactory {
         // Vercel can use OIDC (automatic) or PAT
         return !!process.env.VERCEL_OIDC_TOKEN || 
                (!!process.env.VERCEL_TOKEN && !!process.env.VERCEL_TEAM_ID && !!process.env.VERCEL_PROJECT_ID);
+
+      case 'e2b':
+        return !!process.env.DAYTONA_API_KEY;
       
       default:
         return false;
