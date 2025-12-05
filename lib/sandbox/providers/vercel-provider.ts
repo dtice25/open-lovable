@@ -10,8 +10,7 @@ export class VercelProvider extends SandboxProvider {
   // Create compute instance with Vercel provider
   private compute = createCompute({
     provider: vercel({
-      //token: process.env.VERCEL_OIDC_TOKEN,
-      token: process.env.VERCEL_TOKEN,
+      token: process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN,
       teamId: process.env.VERCEL_TEAM_ID,
       projectId: process.env.VERCEL_PROJECT_ID,
       timeout: appConfig.vercelSandbox.timeoutMs,
@@ -24,7 +23,6 @@ export class VercelProvider extends SandboxProvider {
     try {
       // Destroy existing sandbox if any
       if (this.sandbox) {
-        console.log('[VercelProvider] Destroying existing sandbox:', this.sandbox.sandboxId);
         try {
           await this.compute.sandbox.destroy(this.sandbox.sandboxId);
         } catch (e) {
@@ -36,17 +34,13 @@ export class VercelProvider extends SandboxProvider {
       // Clear existing files tracking
       this.existingFiles.clear();
 
-      console.log('[VercelProvider] Creating new sandbox via ComputeSDK...');
-
       // Create sandbox via ComputeSDK Vercel provider
       this.sandbox = await this.compute.sandbox.create();
 
       const sandboxId = this.sandbox.sandboxId;
-      console.log('[VercelProvider] Sandbox created with ID:', sandboxId);
 
       // Get preview URL for Vite port
       const sandboxUrl = await this.sandbox.getUrl({ port: appConfig.vercelSandbox.vitePort });
-      console.log('[VercelProvider] Sandbox URL:', sandboxUrl);
 
       this.sandboxInfo = {
         sandboxId,
@@ -55,7 +49,6 @@ export class VercelProvider extends SandboxProvider {
         createdAt: new Date()
       };
 
-      console.log('[VercelProvider] Sandbox ready:', this.sandboxInfo);
       return this.sandboxInfo;
 
     } catch (error) {
@@ -65,7 +58,6 @@ export class VercelProvider extends SandboxProvider {
   }
 
   async runCommand(command: string): Promise<CommandResult> {
-    console.log('[VercelProvider] runCommand():', command);
 
     if (!this.sandbox) {
       throw new Error('No active sandbox');
@@ -77,17 +69,9 @@ export class VercelProvider extends SandboxProvider {
       const cmd = parts[0];
       const args = parts.slice(1);
 
-      console.log('[VercelProvider] Executing:', { cmd, args, cwd: appConfig.vercelSandbox.workingDirectory });
-
       // ComputeSDK uses runCommand(cmd, args, options)
       const result = await this.sandbox.runCommand(cmd, args, {
         cwd: appConfig.vercelSandbox.workingDirectory,
-      });
-
-      console.log('[VercelProvider] Command result:', {
-        exitCode: result.exitCode,
-        stdoutLength: result.stdout?.length || 0,
-        stderrLength: result.stderr?.length || 0,
       });
 
       return {
@@ -108,8 +92,6 @@ export class VercelProvider extends SandboxProvider {
   }
 
   async writeFile(path: string, content: string): Promise<void> {
-    console.log('[VercelProvider] writeFile():', path, `(${content.length} chars)`);
-
     if (!this.sandbox) {
       throw new Error('No active sandbox');
     }
@@ -122,7 +104,8 @@ export class VercelProvider extends SandboxProvider {
       try {
         await this.sandbox.filesystem.mkdir(dirPath);
       } catch {
-        // Directory may already exist
+        // Directory may already exist or filesystem.mkdir may not be available
+        await this.sandbox.runCommand('mkdir', ['-p', dirPath]);
       }
     }
 
@@ -139,7 +122,6 @@ export class VercelProvider extends SandboxProvider {
       }
 
       this.existingFiles.add(path);
-      console.log('[VercelProvider] File written:', fullPath);
     } catch (error) {
       console.error('[VercelProvider] writeFile error:', error);
       throw error;
@@ -147,27 +129,23 @@ export class VercelProvider extends SandboxProvider {
   }
 
   async readFile(path: string): Promise<string> {
-    console.log('[VercelProvider] readFile():', path);
-
     if (!this.sandbox) {
       throw new Error('No active sandbox');
     }
 
     const fullPath = path.startsWith('/') ? path : `${appConfig.vercelSandbox.workingDirectory}/${path}`;
 
-    try {
-      const content = await this.sandbox.filesystem.readFile(fullPath);
-      console.log('[VercelProvider] File read:', fullPath, `(${content.length} chars)`);
-      return content;
-    } catch (error) {
-      console.error('[VercelProvider] readFile error:', error);
-      throw error;
+    const result = await this.sandbox.runCommand('sh', ['-c', `cat '${fullPath}'`]);
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Failed to read file: ${result.stderr}`);
     }
+
+    const content = result.stdout || '';
+    return content;
   }
 
   async listFiles(directory?: string): Promise<string[]> {
-    console.log('[VercelProvider] listFiles():', directory);
-
     if (!this.sandbox) {
       throw new Error('No active sandbox');
     }
@@ -194,14 +172,11 @@ export class VercelProvider extends SandboxProvider {
       .map((line: string) => line.trim())
       .filter((line: string) => line !== '');
 
-    console.log('[VercelProvider] Found', files.length, 'files');
     return files;
   }
 
   async installPackages(packages: string[]): Promise<CommandResult> {
-    console.log('[VercelProvider] installPackages():', packages);
-
-    if (!this.sandbox) {
+if (!this.sandbox) {
       throw new Error('No active sandbox');
     }
 
@@ -209,16 +184,8 @@ export class VercelProvider extends SandboxProvider {
     const extraFlags = process.env.NPM_FLAGS ? process.env.NPM_FLAGS.split(' ') : [];
     const args = ['install', ...legacyFlag, ...extraFlags, ...packages];
 
-    console.log('[VercelProvider] Running npm with args:', args);
-
     const result = await this.sandbox.runCommand('npm', args, {
       cwd: appConfig.vercelSandbox.workingDirectory,
-    });
-
-    console.log('[VercelProvider] npm install result:', {
-      exitCode: result.exitCode,
-      stdoutLength: result.stdout?.length || 0,
-      stderrLength: result.stderr?.length || 0,
     });
 
     // Restart Vite if configured and successful
@@ -235,9 +202,7 @@ export class VercelProvider extends SandboxProvider {
   }
 
   async setupViteApp(): Promise<void> {
-    console.log('[VercelProvider] setupViteApp() called');
-
-    if (!this.sandbox) {
+if (!this.sandbox) {
       throw new Error('No active sandbox');
     }
 
@@ -247,7 +212,8 @@ export class VercelProvider extends SandboxProvider {
     try {
       await this.sandbox.filesystem.mkdir(`${cwd}/src`);
     } catch {
-      // Directory may already exist
+      // Directory may already exist or filesystem.mkdir may not be available
+      await this.sandbox.runCommand('mkdir', ['-p', `${cwd}/src`]);
     }
 
     // package.json
@@ -274,7 +240,6 @@ export class VercelProvider extends SandboxProvider {
     };
 
     await this.writeFile('package.json', JSON.stringify(packageJson, null, 2));
-    console.log('[VercelProvider] package.json written');
 
     // vite.config.js
     const viteConfig = `import { defineConfig } from 'vite'
@@ -298,7 +263,6 @@ export default defineConfig({
 })`;
 
     await this.writeFile('vite.config.js', viteConfig);
-    console.log('[VercelProvider] vite.config.js written');
 
     // tailwind.config.js
     const tailwindConfig = `/** @type {import('tailwindcss').Config} */
@@ -314,7 +278,6 @@ export default {
 }`;
 
     await this.writeFile('tailwind.config.js', tailwindConfig);
-    console.log('[VercelProvider] tailwind.config.js written');
 
     // postcss.config.js
     const postcssConfig = `export default {
@@ -325,7 +288,6 @@ export default {
 }`;
 
     await this.writeFile('postcss.config.js', postcssConfig);
-    console.log('[VercelProvider] postcss.config.js written');
 
     // index.html
     const indexHtml = `<!DOCTYPE html>
@@ -342,7 +304,6 @@ export default {
 </html>`;
 
     await this.writeFile('index.html', indexHtml);
-    console.log('[VercelProvider] index.html written');
 
     // src/main.jsx
     const mainJsx = `import React from 'react'
@@ -357,7 +318,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 )`;
 
     await this.writeFile('src/main.jsx', mainJsx);
-    console.log('[VercelProvider] src/main.jsx written');
 
     // src/App.jsx
     const appJsx = `function App() {
@@ -376,7 +336,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 export default App`;
 
     await this.writeFile('src/App.jsx', appJsx);
-    console.log('[VercelProvider] src/App.jsx written');
 
     // src/index.css
     const indexCss = `@tailwind base;
@@ -389,9 +348,6 @@ body {
 }`;
 
     await this.writeFile('src/index.css', indexCss);
-    console.log('[VercelProvider] src/index.css written');
-
-    console.log('[VercelProvider] All files written, installing dependencies...');
 
     // Install dependencies
     const installResult = await this.sandbox.runCommand('npm', ['install'], {
@@ -399,15 +355,12 @@ body {
     });
 
     if (installResult.exitCode === 0) {
-      console.log('[VercelProvider] Dependencies installed successfully');
     } else {
       console.warn('[VercelProvider] npm install had issues:', installResult.stderr);
     }
 
     // Start Vite dev server
-    console.log('[VercelProvider] Starting Vite dev server...');
     await this.restartViteServer();
-    console.log('[VercelProvider] Vite dev server started');
 
     // Track initial files
     this.existingFiles.add('src/App.jsx');
@@ -419,12 +372,9 @@ body {
     this.existingFiles.add('tailwind.config.js');
     this.existingFiles.add('postcss.config.js');
 
-    console.log('[VercelProvider] setupViteApp() complete');
   }
 
   async restartViteServer(): Promise<void> {
-    console.log('[VercelProvider] restartViteServer() called');
-
     if (!this.sandbox) {
       throw new Error('No active sandbox');
     }
@@ -432,44 +382,28 @@ body {
     const cwd = appConfig.vercelSandbox.workingDirectory;
 
     // Kill existing Vite process
-    console.log('[VercelProvider] Killing existing Vite process...');
     try {
       await this.sandbox.runCommand('sh', ['-c', 'pkill -f vite || true']);
-      console.log('[VercelProvider] pkill completed');
     } catch (e) {
       console.log('[VercelProvider] pkill error (ignored):', e);
     }
 
     // Wait a moment
-    console.log('[VercelProvider] Waiting 2s before starting Vite...');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Start Vite dev server in background
-    // Use disown and redirect to fully detach the process so runCommand returns immediately
-    console.log('[VercelProvider] Starting Vite in background...');
     try {
-      // Run with a timeout to prevent hanging - the command should return immediately due to &
-      const startPromise = this.sandbox.runCommand('sh', [
-        '-c',
-        `cd ${cwd} && (npm run dev > ${cwd}/vite.log 2>&1 &) && echo "started"`,
-      ]);
-      
-      // Add a 10 second timeout
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Vite start timeout')), 10000)
-      );
-      
-      await Promise.race([startPromise, timeoutPromise]);
-      console.log('[VercelProvider] Vite start command sent');
+      await this.sandbox.runCommand('npm', ['run', 'dev'], {
+        cwd,
+        background: true,
+      });
     } catch (e: any) {
-      console.log('[VercelProvider] Vite start returned (possibly timed out, but process may be running):', e.message);
+      console.error('[VercelProvider] Failed to start Vite:', e.message);
     }
 
     // Wait for Vite to be ready
-    console.log(`[VercelProvider] Waiting ${appConfig.vercelSandbox.devServerStartupDelay}ms for Vite to be ready...`);
     await new Promise(resolve => setTimeout(resolve, appConfig.vercelSandbox.devServerStartupDelay));
 
-    console.log('[VercelProvider] Vite server restarted');
   }
 
   getSandboxUrl(): string | null {
@@ -481,12 +415,9 @@ body {
   }
 
   async terminate(): Promise<void> {
-    console.log('[VercelProvider] terminate() called');
-
     if (this.sandbox && this.sandboxInfo?.sandboxId) {
       try {
         await this.compute.sandbox.destroy(this.sandboxInfo.sandboxId);
-        console.log('[VercelProvider] Sandbox destroyed:', this.sandboxInfo.sandboxId);
       } catch (e) {
         console.error('[VercelProvider] Failed to terminate sandbox:', e);
       }
@@ -497,7 +428,6 @@ body {
 
   isAlive(): boolean {
     const alive = !!this.sandbox;
-    console.log('[VercelProvider] isAlive():', alive);
     return alive;
   }
 }
