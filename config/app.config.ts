@@ -25,7 +25,7 @@ export const appConfig = {
     cssRebuildDelay: 2000,
 
     // Working directory in sandbox
-    workingDirectory: '/app',
+    workingDirectory: '/vercel/sandbox',
 
     // Default runtime for sandbox
     runtime: 'node22' // Available: node22, python3.13, v0-next-shadcn, cua-ubuntu-xfce
