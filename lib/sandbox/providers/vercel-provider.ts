@@ -274,6 +274,7 @@ export class VercelProvider extends SandboxProvider {
     };
 
     await this.writeFile('package.json', JSON.stringify(packageJson, null, 2));
+    console.log('[VercelProvider] package.json written');
 
     // vite.config.js
     const viteConfig = `import { defineConfig } from 'vite'
@@ -297,6 +298,7 @@ export default defineConfig({
 })`;
 
     await this.writeFile('vite.config.js', viteConfig);
+    console.log('[VercelProvider] vite.config.js written');
 
     // tailwind.config.js
     const tailwindConfig = `/** @type {import('tailwindcss').Config} */
@@ -312,6 +314,7 @@ export default {
 }`;
 
     await this.writeFile('tailwind.config.js', tailwindConfig);
+    console.log('[VercelProvider] tailwind.config.js written');
 
     // postcss.config.js
     const postcssConfig = `export default {
@@ -322,6 +325,7 @@ export default {
 }`;
 
     await this.writeFile('postcss.config.js', postcssConfig);
+    console.log('[VercelProvider] postcss.config.js written');
 
     // index.html
     const indexHtml = `<!DOCTYPE html>
@@ -338,6 +342,7 @@ export default {
 </html>`;
 
     await this.writeFile('index.html', indexHtml);
+    console.log('[VercelProvider] index.html written');
 
     // src/main.jsx
     const mainJsx = `import React from 'react'
@@ -352,6 +357,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 )`;
 
     await this.writeFile('src/main.jsx', mainJsx);
+    console.log('[VercelProvider] src/main.jsx written');
 
     // src/App.jsx
     const appJsx = `function App() {
@@ -370,6 +376,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 export default App`;
 
     await this.writeFile('src/App.jsx', appJsx);
+    console.log('[VercelProvider] src/App.jsx written');
 
     // src/index.css
     const indexCss = `@tailwind base;
@@ -382,6 +389,7 @@ body {
 }`;
 
     await this.writeFile('src/index.css', indexCss);
+    console.log('[VercelProvider] src/index.css written');
 
     console.log('[VercelProvider] All files written, installing dependencies...');
 
@@ -397,7 +405,9 @@ body {
     }
 
     // Start Vite dev server
+    console.log('[VercelProvider] Starting Vite dev server...');
     await this.restartViteServer();
+    console.log('[VercelProvider] Vite dev server started');
 
     // Track initial files
     this.existingFiles.add('src/App.jsx');
@@ -422,22 +432,41 @@ body {
     const cwd = appConfig.vercelSandbox.workingDirectory;
 
     // Kill existing Vite process
+    console.log('[VercelProvider] Killing existing Vite process...');
     try {
       await this.sandbox.runCommand('sh', ['-c', 'pkill -f vite || true']);
-    } catch {
-      // Ignore errors if no process to kill
+      console.log('[VercelProvider] pkill completed');
+    } catch (e) {
+      console.log('[VercelProvider] pkill error (ignored):', e);
     }
 
     // Wait a moment
+    console.log('[VercelProvider] Waiting 2s before starting Vite...');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Start Vite dev server in background
-    await this.sandbox.runCommand('sh', [
-      '-c',
-      `cd ${cwd} && nohup npm run dev > ${cwd}/vite.log 2>&1 &`,
-    ]);
+    // Use disown and redirect to fully detach the process so runCommand returns immediately
+    console.log('[VercelProvider] Starting Vite in background...');
+    try {
+      // Run with a timeout to prevent hanging - the command should return immediately due to &
+      const startPromise = this.sandbox.runCommand('sh', [
+        '-c',
+        `cd ${cwd} && (npm run dev > ${cwd}/vite.log 2>&1 &) && echo "started"`,
+      ]);
+      
+      // Add a 10 second timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Vite start timeout')), 10000)
+      );
+      
+      await Promise.race([startPromise, timeoutPromise]);
+      console.log('[VercelProvider] Vite start command sent');
+    } catch (e: any) {
+      console.log('[VercelProvider] Vite start returned (possibly timed out, but process may be running):', e.message);
+    }
 
     // Wait for Vite to be ready
+    console.log(`[VercelProvider] Waiting ${appConfig.vercelSandbox.devServerStartupDelay}ms for Vite to be ready...`);
     await new Promise(resolve => setTimeout(resolve, appConfig.vercelSandbox.devServerStartupDelay));
 
     console.log('[VercelProvider] Vite server restarted');
