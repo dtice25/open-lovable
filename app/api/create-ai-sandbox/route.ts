@@ -87,13 +87,13 @@ async function createSandboxInternal() {
     }
 
     // Create Vercel sandbox with flexible authentication
-    console.log(`[create-ai-sandbox] Creating Vercel sandbox with ${appConfig.vercelSandbox.timeoutMinutes} minute timeout...`);
+    console.log(`[create-ai-sandbox] Creating Vercel sandbox with ${appConfig.baseProviderConfig.timeoutMinutes} minute timeout...`);
     
     // Prepare sandbox configuration
     const sandboxConfig: any = {
-      timeout: appConfig.vercelSandbox.timeoutMs,
-      runtime: appConfig.vercelSandbox.runtime,
-      ports: [appConfig.vercelSandbox.devPort]
+      timeout: appConfig.baseProviderConfig.timeoutMs,
+      runtime: appConfig.baseProviderConfig.vercel.runtime,
+      ports: [appConfig.baseProviderConfig.devPort]
     };
     
     // Add authentication parameters if using personal access token
@@ -121,7 +121,7 @@ async function createSandboxInternal() {
     // workDir is defined in appConfig - not needed here
     
     // Get the sandbox URL using the correct Vercel Sandbox API
-    const sandboxUrl = sandbox.domain(appConfig.vercelSandbox.devPort);
+    const sandboxUrl = sandbox.domain(appConfig.baseProviderConfig.devPort);
     
     // Extract the hostname from the sandbox URL for Vite config
     const sandboxHostname = new URL(sandboxUrl).hostname;
@@ -136,7 +136,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: ${appConfig.vercelSandbox.devPort},
+    port: ${appConfig.baseProviderConfig.devPort},
     strictPort: true,
     hmr: true,
     allowedHosts: [
@@ -312,7 +312,7 @@ body {
     console.log('[create-ai-sandbox] ✓ Vite dev server started');
     
     // Wait for Vite to be fully ready
-    await new Promise(resolve => setTimeout(resolve, appConfig.vercelSandbox.devServerStartupDelay));
+    await new Promise(resolve => setTimeout(resolve, appConfig.baseProviderConfig.viteStartupDelay));
 
     // Store sandbox globally
     global.activeSandbox = sandbox;

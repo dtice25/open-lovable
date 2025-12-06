@@ -10,7 +10,7 @@ export class E2BProvider extends SandboxProvider {
   private compute = createCompute({
     provider: e2b({
       apiKey: process.env.E2B_API_KEY!,
-      timeout: appConfig.e2b.timeoutMs,
+      timeout: appConfig.baseProviderConfig.timeoutMs,
     }),
   });
 
@@ -55,7 +55,7 @@ export class E2BProvider extends SandboxProvider {
       const sandboxId = this.sandbox.sandboxId;
       
       // Get preview URL for Vite port
-      const previewUrl = await this.sandbox.getUrl({ port: appConfig.e2b.vitePort });
+      const previewUrl = await this.sandbox.getUrl({ port: appConfig.baseProviderConfig.vitePort });
 
 
       this.sandboxInfo = {
@@ -443,7 +443,7 @@ print('Waiting for server to be ready...')
     `);
     
     // Wait for Vite to be ready
-    await new Promise(resolve => setTimeout(resolve, appConfig.e2b.viteStartupDelay));
+    await new Promise(resolve => setTimeout(resolve, appConfig.baseProviderConfig.viteStartupDelay));
     
     // Track initial files
     this.existingFiles.add('src/App.jsx');
@@ -488,7 +488,7 @@ print(f'✓ Vite restarted with PID: {process.pid}')
     `);
 
     // Wait for Vite to be ready
-    await new Promise(resolve => setTimeout(resolve, appConfig.e2b.viteStartupDelay));
+    await new Promise(resolve => setTimeout(resolve, appConfig.baseProviderConfig.viteStartupDelay));
   }
 
   getSandboxUrl(): string | null {

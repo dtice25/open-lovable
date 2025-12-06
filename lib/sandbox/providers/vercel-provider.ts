@@ -13,9 +13,9 @@ export class VercelProvider extends SandboxProvider {
       token: process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN,
       teamId: process.env.VERCEL_TEAM_ID,
       projectId: process.env.VERCEL_PROJECT_ID,
-      timeout: appConfig.vercelSandbox.timeoutMs,
+      timeout: appConfig.baseProviderConfig.timeoutMs,
       runtime: 'node',
-      ports: [appConfig.vercelSandbox.vitePort],
+      ports: [appConfig.baseProviderConfig.vitePort],
     }),
   });
 
@@ -40,11 +40,11 @@ export class VercelProvider extends SandboxProvider {
       const sandboxId = this.sandbox.sandboxId;
 
       // Get preview URL for Vite port
-      const sandboxUrl = await this.sandbox.getUrl({ port: appConfig.vercelSandbox.vitePort });
+      const previewUrl = await this.sandbox.getUrl({ port: appConfig.baseProviderConfig.vitePort });
 
       this.sandboxInfo = {
         sandboxId,
-        url: sandboxUrl,
+        url: previewUrl,
         provider: 'vercel',
         createdAt: new Date()
       };
@@ -71,7 +71,7 @@ export class VercelProvider extends SandboxProvider {
 
       // ComputeSDK uses runCommand(cmd, args, options)
       const result = await this.sandbox.runCommand(cmd, args, {
-        cwd: appConfig.vercelSandbox.workingDirectory,
+        cwd: appConfig.baseProviderConfig.vercel.workingDirectory,
       });
 
       return {
@@ -96,7 +96,7 @@ export class VercelProvider extends SandboxProvider {
       throw new Error('No active sandbox');
     }
 
-    const fullPath = path.startsWith('/') ? path : `${appConfig.vercelSandbox.workingDirectory}/${path}`;
+    const fullPath = path.startsWith('/') ? path : `${appConfig.baseProviderConfig.vercel.workingDirectory}/${path}`;
 
     // Ensure directory exists
     const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
@@ -133,7 +133,7 @@ export class VercelProvider extends SandboxProvider {
       throw new Error('No active sandbox');
     }
 
-    const fullPath = path.startsWith('/') ? path : `${appConfig.vercelSandbox.workingDirectory}/${path}`;
+    const fullPath = path.startsWith('/') ? path : `${appConfig.baseProviderConfig.vercel.workingDirectory}/${path}`;
 
     const result = await this.sandbox.runCommand('sh', ['-c', `cat '${fullPath}'`]);
 
@@ -150,7 +150,7 @@ export class VercelProvider extends SandboxProvider {
       throw new Error('No active sandbox');
     }
 
-    const dir = directory || appConfig.vercelSandbox.workingDirectory;
+    const dir = directory || appConfig.baseProviderConfig.vercel.workingDirectory;
 
     const result = await this.sandbox.runCommand('sh', [
       '-c',
@@ -185,7 +185,7 @@ if (!this.sandbox) {
     const args = ['install', ...legacyFlag, ...extraFlags, ...packages];
 
     const result = await this.sandbox.runCommand('npm', args, {
-      cwd: appConfig.vercelSandbox.workingDirectory,
+      cwd: appConfig.baseProviderConfig.vercel.workingDirectory,
     });
 
     // Restart Vite if configured and successful
@@ -206,7 +206,7 @@ if (!this.sandbox) {
       throw new Error('No active sandbox');
     }
 
-    const cwd = appConfig.vercelSandbox.workingDirectory;
+    const cwd = appConfig.baseProviderConfig.vercel.workingDirectory;
 
     // Ensure src directory exists
     try {
@@ -249,7 +249,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: ${appConfig.vercelSandbox.vitePort},
+    port: ${appConfig.baseProviderConfig.vitePort},
     strictPort: true,
     allowedHosts: [
       '.vercel.run',
@@ -379,7 +379,7 @@ body {
       throw new Error('No active sandbox');
     }
 
-    const cwd = appConfig.vercelSandbox.workingDirectory;
+    const cwd = appConfig.baseProviderConfig.vercel.workingDirectory;
 
     // Kill existing Vite process
     try {
@@ -402,7 +402,7 @@ body {
     }
 
     // Wait for Vite to be ready
-    await new Promise(resolve => setTimeout(resolve, appConfig.vercelSandbox.devServerStartupDelay));
+    await new Promise(resolve => setTimeout(resolve, appConfig.baseProviderConfig.viteStartupDelay));
 
   }
 

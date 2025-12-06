@@ -12,11 +12,11 @@ export class DaytonaProvider extends SandboxProvider {
     provider: daytona({
       apiKey: process.env.DAYTONA_API_KEY,
       runtime: 'node',
-      timeout: appConfig.daytona.timeoutMs,
+      timeout: appConfig.baseProviderConfig.timeoutMs,
     }),
   });
 
-  // Uses appConfig.daytona.workingDirectory as the single source of truth.
+  // Uses appConfig.baseProviderConfig.daytona.workingDirectory as the single source of truth.
   private async ensureWorkingDir(): Promise<string> {
     if (!this.sandbox) {
       throw new Error('No active sandbox');
@@ -26,12 +26,12 @@ export class DaytonaProvider extends SandboxProvider {
       return this.workingDir;
     }
 
-    if (appConfig.daytona.workingDirectory) {
-      this.workingDir = appConfig.daytona.workingDirectory;
+    if (appConfig.baseProviderConfig.daytona.workingDirectory) {
+      this.workingDir = appConfig.baseProviderConfig.daytona.workingDirectory;
     } else {
       throw new Error(
         '[DaytonaProvider] Unable to determine working directory. ' +
-          'appConfig.daytona.workingDirectory is not set.',
+          'appConfig.baseProviderConfig.daytona.workingDirectory is not set.',
       );
     }
 
@@ -60,31 +60,12 @@ export class DaytonaProvider extends SandboxProvider {
 
       const sandboxId = this.sandbox.sandboxId;
 
-      // Preview URL
-      let url: string | undefined;
-
-      if (typeof this.sandbox.getUrl === 'function') {
-        // Use the universal ComputeSDK sandbox.getUrl({ port })
-        url = await this.sandbox.getUrl({ port: appConfig.daytona.vitePort });
-      } else {
-        // fall back to Daytona's getPreviewUrl on the underlying instance.
-        const instance = typeof this.sandbox.getInstance === 'function'
-          ? this.sandbox.getInstance()
-          : null;
-
-        if (instance && typeof instance.getPreviewUrl === 'function') {
-          const previewInfo = await instance.getPreviewUrl(appConfig.daytona.vitePort);
-          url = previewInfo?.url;
-        }
-      }
-
-      if (!url) {
-        throw new Error('[DaytonaProvider] getPreviewUrl did not return a URL');
-      }
+      // Get preview URL for Vite port
+      const previewUrl = await this.sandbox.getUrl({ port: appConfig.baseProviderConfig.vitePort });
 
       this.sandboxInfo = {
         sandboxId,
-        url,
+        url: previewUrl,
         provider: 'daytona',
         createdAt: new Date(),
       };
@@ -294,7 +275,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: ${appConfig.daytona.vitePort},
+    port: ${appConfig.baseProviderConfig.vitePort},
     strictPort: true,
     allowedHosts: [
       '.proxy.daytona.work',
@@ -434,7 +415,7 @@ body {
     ]);
 
     // Wait for Vite to be ready
-    await new Promise((resolve) => setTimeout(resolve, appConfig.daytona.viteStartupDelay));
+    await new Promise((resolve) => setTimeout(resolve, appConfig.baseProviderConfig.viteStartupDelay));
   }
 
   getSandboxUrl(): string | null {

@@ -2,73 +2,48 @@
 // This file contains all configurable settings for the application
 
 export const appConfig = {
-  // Vercel Sandbox Configuration
-  vercelSandbox: {
-    // Sandbox timeout in minutes
-    timeoutMinutes: 15,
+  baseProviderConfig: {
+    // timeout in minutes
+    timeoutMinutes: 30,
 
-    // Convert to milliseconds for Vercel Sandbox API
+    // timeout in ms
     get timeoutMs() {
-      return this.timeoutMinutes * 60 * 1000;
+        return this.timeoutMinutes * 60 * 1000;
     },
 
-    // Development server port (Vercel uses 5173 for Vite)
+    // Vite server port (5173 is default for Vite)
     vitePort: 5173,
 
-    // Development server port (Vercel Sandbox typically uses 3000 for Next.js/React)
+    // Dev server port (3000 is default for Next.js/React)
     devPort: 3000,
 
-    // Time to wait for dev server to be ready (in milliseconds)
-    devServerStartupDelay: 7000,
+    // Time to wait for Vite dev server to be ready (in milliseconds)
+    viteStartupDelay: 10000,
 
     // Time to wait for CSS rebuild (in milliseconds)
     cssRebuildDelay: 2000,
 
-    // Working directory in sandbox
-    workingDirectory: '/vercel/sandbox',
-
-    // Default runtime for sandbox
-    runtime: 'node22' // Available: node22, python3.13, v0-next-shadcn, cua-ubuntu-xfce
-  },
-
-  // E2B Sandbox Configuration
-  e2b: {
-    // Sandbox timeout in minutes
-    timeoutMinutes: 30,
-
-    // Convert to milliseconds for E2B API
-    get timeoutMs() {
-      return this.timeoutMinutes * 60 * 1000;
+    // PROVIDER-SPECIFIC CONFIGS
+    // E2B
+    e2b: {
+      // Working directory in sandbox
+      workingDirectory: '/home/user/app',
     },
 
-    // Development server port (E2B uses 5173 for Vite)
-    vitePort: 5173,
-
-    // Time to wait for Vite dev server to be ready (in milliseconds)
-    viteStartupDelay: 10000,
-
-    // Working directory in sandbox
-    workingDirectory: '/home/user/app',
-  },
-
-    // Daytona Sandbox Configuration
-  daytona: {
-    // Sandbox timeout in minutes
-    timeoutMinutes: 30,
-
-    // Convert to milliseconds for Daytona API
-    get timeoutMs() {
-      return this.timeoutMinutes * 60 * 1000;
+    // DAYTONA
+    daytona: {
+      // Working directory in sandbox
+      workingDirectory: '/home/daytona',
     },
 
-    // Development server port (5173 for Vite)
-    vitePort: 5173,
+    //VERCEL
+    vercel: {
+      // Working directory in sandbox
+      workingDirectory: '/vercel/sandbox',
 
-    // Time to wait for Vite dev server to be ready (in milliseconds)
-    viteStartupDelay: 10000,
-
-    // Working directory in sandbox
-    workingDirectory: '/home/daytona',
+      // Default runtime for sandbox
+      runtime: 'node22' // Available: node22, python3.13, v0-next-shadcn, cua-ubuntu-xfce
+    },
   },
   
   // AI Model Configuration
