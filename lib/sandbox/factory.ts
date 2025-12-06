@@ -38,7 +38,7 @@ export class SandboxFactory {
         return !!process.env.VERCEL_OIDC_TOKEN || 
                (!!process.env.VERCEL_TOKEN && !!process.env.VERCEL_TEAM_ID && !!process.env.VERCEL_PROJECT_ID);
 
-      case 'e2b':
+      case 'daytona':
         return !!process.env.DAYTONA_API_KEY;
       
       default:
