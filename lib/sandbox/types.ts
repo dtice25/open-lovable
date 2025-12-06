@@ -30,6 +30,11 @@ export interface SandboxProviderConfig {
     token?: string;
     authMethod?: 'oidc' | 'pat';
   };
+    daytona?: {
+    apiKey: string;
+    timeoutMs?: number;
+    template?: string;
+  };
 }
 
 export abstract class SandboxProvider {
