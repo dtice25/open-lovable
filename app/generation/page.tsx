@@ -3281,7 +3281,7 @@ Focus on the key sections and content, making it clean and modern.`;
   return (
     <HeaderProvider>
       <div className="font-sans bg-background text-foreground h-screen flex flex-col">
-      <div className="bg-white py-[15px] py-[8px] border-b border-border-faint flex items-center justify-between shadow-sm">
+      <div className="bg-white py-[8px] border-b border-border-faint flex items-center justify-between shadow-sm">
         <HeaderBrandKit />
         <div className="flex items-center gap-2">
           {/* Model Selector - Left side */}

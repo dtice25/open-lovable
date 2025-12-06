@@ -58,6 +58,7 @@ export class DaytonaProvider extends SandboxProvider {
       // Create sandbox via ComputeSDK Daytona provider
       this.sandbox = await this.compute.sandbox.create();
 
+      // Access sandboxId directly from sandbox object
       const sandboxId = this.sandbox.sandboxId;
 
       // Get preview URL for Vite port
