@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
     
     const app = new FirecrawlApp({ apiKey });
 
-    console.log('[scrape-screenshot] Attempting to capture screenshot for:', url);
-    console.log('[scrape-screenshot] Using Firecrawl API key:', apiKey ? 'Present' : 'Missing');
+    //console.log('[scrape-screenshot] Attempting to capture screenshot for:', url);
+    //console.log('[scrape-screenshot] Using Firecrawl API key:', apiKey ? 'Present' : 'Missing');
 
     // Use the new v4 scrape method (not scrapeUrl)
     const scrapeResult = await app.scrape(url, {
@@ -38,9 +38,9 @@ export async function POST(req: NextRequest) {
       ]
     });
 
-    console.log('[scrape-screenshot] Full scrape result:', JSON.stringify(scrapeResult, null, 2));
-    console.log('[scrape-screenshot] Scrape result type:', typeof scrapeResult);
-    console.log('[scrape-screenshot] Scrape result keys:', Object.keys(scrapeResult));
+    //console.log('[scrape-screenshot] Full scrape result:', JSON.stringify(scrapeResult, null, 2));
+    //console.log('[scrape-screenshot] Scrape result type:', typeof scrapeResult);
+    //console.log('[scrape-screenshot] Scrape result keys:', Object.keys(scrapeResult));
     
     // The Firecrawl v4 API might return data directly without a success flag
     // Check if we have data with screenshot
