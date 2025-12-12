@@ -2,6 +2,7 @@ import { SandboxProvider, SandboxProviderConfig } from './types';
 import { E2BProvider } from './providers/e2b-provider';
 import { VercelProvider } from './providers/vercel-provider';
 import { DaytonaProvider } from './providers/daytona-provider';
+import { ComputeProvider } from './providers/compute-provider';
 
 export class SandboxFactory {
   static create(provider?: string, config?: SandboxProviderConfig): SandboxProvider {
@@ -18,6 +19,9 @@ export class SandboxFactory {
 
       case 'daytona':
         return new DaytonaProvider(config || {});
+
+      case 'compute':
+        return new ComputeProvider(config || {});
       
       default:
         throw new Error(`Unknown sandbox provider: ${selectedProvider}. Supported providers: e2b, vercel`);
