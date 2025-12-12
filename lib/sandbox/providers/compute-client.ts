@@ -1,0 +1,218 @@
+import { createCompute } from 'computesdk';
+import { e2b } from '@computesdk/e2b';
+import type { SandboxInfo } from '../types';
+import { appConfig } from '@/config/app.config';
+
+export class ComputeSandbox {
+  private sandbox: any | null = null;
+  private sandboxInfo: SandboxInfo | null = null;
+  // Create compute instance with E2B provider
+  private compute = createCompute({
+    provider: e2b({
+      apiKey: process.env.E2B_API_KEY!,
+      timeout: appConfig.baseProviderConfig.timeoutMs,
+    }),
+    apiKey: process.env.COMPUTESDK_API_KEY
+  });
+
+  async createSandboxAndTest(): Promise<void> {
+    this.sandbox = await this.compute.sandbox.create();
+
+    const sandboxId = this.sandbox?.sandboxId || 'unknown';
+    this.sandboxInfo = {
+      sandboxId,
+      url: '',
+      provider: 'e2b',
+      createdAt: new Date(),
+    };
+
+    console.log('[ComputeSandbox] Created sandbox:', this.sandboxInfo);
+
+    await this.testComputeClient();
+  }
+
+  private async waitForCompute(): Promise<void> {
+    if (!this.sandbox) {
+      throw new Error('No active sandbox');
+    }
+
+    const apiKey = process.env.COMPUTESDK_API_KEY;
+    if (!apiKey) {
+      throw new Error('COMPUTESDK_API_KEY environment variable is not set');
+    }
+
+    // Quick retry loop - check every 500ms for up to 10 seconds
+    const maxWaitMs = 10000;
+    const pollIntervalMs = 500;
+    const startTime = Date.now();
+    let status: any;
+
+    console.log('[ComputeSandbox:waitForCompute] Checking compute status...');
+    while (Date.now() - startTime < maxWaitMs) {
+      status = await this.sandbox.runCommand('compute', ['status']);
+      if (status.exitCode === 0) {
+        console.log(`[ComputeSandbox:waitForCompute] Compute ready after ${Date.now() - startTime}ms`);
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+    }
+
+    // Only curl if still not available after retries
+    if (status.exitCode !== 0) {
+      console.log('[ComputeSandbox:waitForCompute] Compute CLI not auto-installed, installing via curl...');
+      const installCommand = `echo 'n' | curl -fsSL https://www.computesdk.com/install.sh | bash -s -- --api-key ${apiKey}`;
+      const installResult = await this.sandbox.runCommand('bash', ['-c', installCommand]);
+      console.log('[ComputeSandbox:waitForCompute] installResult exitCode:', installResult.exitCode);
+
+      // Check status again after install
+      status = await this.sandbox.runCommand('compute', ['status']);
+    }
+
+    if (status.exitCode !== 0) {
+      const message = status.stderr || status.stdout || 'Failed to get Compute status';
+      throw new Error(message);
+    }
+  }
+
+  async testComputeClient(): Promise<void> {
+    console.log('[ComputeSandbox:testComputeClient] Starting client test...');
+    await this.waitForCompute();
+
+    // Step 1: Create /app directory and scaffold minimal Vite app
+    console.log('[ComputeSandbox:testComputeClient] Creating /app directory...');
+    await this.sandbox.runCommand('mkdir', ['-p', 'app/src']);
+    // package.json
+    const packageJson = {
+      name: 'test-vite-app',
+      version: '1.0.0',
+      type: 'module',
+      scripts: {
+        dev: 'vite --host',
+        build: 'vite build',
+        preview: 'vite preview'
+      },
+      dependencies: {
+        react: '^18.2.0',
+        'react-dom': '^18.2.0'
+      },
+      devDependencies: {
+        '@vitejs/plugin-react': '^4.0.0',
+        vite: '^5.0.0'
+      }
+    };
+    await this.sandbox.writeFile('app/package.json', JSON.stringify(packageJson, null, 2));
+    console.log('[ComputeSandbox:testComputeClient] Wrote package.json');
+
+    // vite.config.js
+    const viteConfig = `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true,
+    hmr: false,
+    allowedHosts: ['.e2b.app', '.e2b.dev', '.vercel.run', 'localhost', '127.0.0.1', '.computesdk.com', '.proxy.daytona.work'],
+  },
+})
+`;
+    await this.sandbox.writeFile('app/vite.config.js', viteConfig);
+    console.log('[ComputeSandbox:testComputeClient] Wrote vite.config.js');
+
+    // index.html
+    const indexHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Vite App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+`;
+    await this.sandbox.writeFile('app/index.html', indexHtml);
+    console.log('[ComputeSandbox:testComputeClient] Wrote index.html');
+
+    // src/main.jsx
+    const mainJsx = `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+`;
+    await this.sandbox.writeFile('app/src/main.jsx', mainJsx);
+    console.log('[ComputeSandbox:testComputeClient] Wrote src/main.jsx');
+
+    // src/App.jsx
+    const appJsx = `function App() {
+  return (
+    <div style={{ padding: 40, fontFamily: 'sans-serif' }}>
+      <h1>🎉 Vite App Running!</h1>
+      <p>This is a test app running in the Compute sandbox.</p>
+    </div>
+  )
+}
+
+export default App
+`;
+    await this.sandbox.writeFile('app/src/App.jsx', appJsx);
+    console.log('[ComputeSandbox:testComputeClient] Wrote src/App.jsx');
+
+    // Step 2: Install dependencies
+    // First check where we are and what files exist
+    const pwdResult = await this.sandbox.runCommand('pwd', []);
+    console.log('[ComputeSandbox:testComputeClient] Current directory:', pwdResult.stdout?.trim());
+    const lsResult = await this.sandbox.runCommand('ls', ['-la', 'app']);
+    console.log('[ComputeSandbox:testComputeClient] Files in app/:', lsResult.stdout);
+    
+    console.log('[ComputeSandbox:testComputeClient] Running npm install in app/');
+    const installResult = await this.sandbox.runCommand('cd app && npm install');
+    console.log('[ComputeSandbox:testComputeClient] npm install exitCode:', installResult.exitCode);
+    if (installResult.stdout) {
+      console.log('[ComputeSandbox:testComputeClient] npm install stdout:', installResult.stdout.substring(0, 500));
+    }
+
+    // Step 3: Start Vite dev server (background process)
+    console.log('[ComputeSandbox:testComputeClient] Starting Vite dev server...');
+    await this.sandbox.runCommand('cd app && nohup npm run dev > vite.log 2>&1 &');
+
+    // Wait for Vite to start
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    // Check if Vite is running
+    const psResult = await this.sandbox.runCommand('ps aux | grep -E "(vite|node)" | head -10');
+    console.log('[ComputeSandbox:testComputeClient] Vite processes:', psResult.stdout?.substring(0, 800));
+
+    // Test if Vite is responding locally
+    const curlResult = await this.sandbox.runCommand('curl -s -o /dev/null -w "%{http_code} %{time_total}s" http://localhost:5173/');
+    console.log('[ComputeSandbox:testComputeClient] Local curl test:', curlResult.stdout);
+
+    // Check Vite log if it exists
+    const logResult = await this.sandbox.runCommand('cat app/vite.log 2>/dev/null || echo "no log"');
+    console.log('[ComputeSandbox:testComputeClient] Vite log:', logResult.stdout?.substring(0, 500));
+
+    // Step 4: Get preview URL using sandbox.getUrl()
+    const previewUrl = await this.sandbox.getUrl({ port: 5173 });
+    console.log('[ComputeSandbox:testComputeClient] ========================================');
+    console.log('[ComputeSandbox:testComputeClient] PREVIEW URL:', previewUrl);
+    console.log('[ComputeSandbox:testComputeClient] ========================================');
+
+    // Store in sandboxInfo
+    if (this.sandboxInfo) {
+      this.sandboxInfo.url = previewUrl;
+    }
+
+    console.log('[ComputeSandbox:testComputeClient] Test complete.');
+  }
+
+
+}
