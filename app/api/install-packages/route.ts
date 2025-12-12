@@ -71,13 +71,6 @@ export async function POST(request: NextRequest) {
         
         // Stop any existing development server first
         await sendProgress({ type: 'status', message: 'Stopping development server...' });
-
-        const isComputeProvider = providerInstance?.constructor?.name === 'ComputeProvider';
-
-        // For non-Compute providers, explicitly pkill vite here.
-        // For ComputeProvider, restartViteServer is handled inside installPackages(),
-        // which already does a pkill + npm run dev cycle.
-        if (!isComputeProvider) {
           try {
             // Try to kill any running dev server processes
             await providerInstance.runCommand('pkill -f vite');
@@ -85,9 +78,6 @@ export async function POST(request: NextRequest) {
           } catch (killError) {
             // It's OK if no process is found
             console.debug('[install-packages] No existing dev server found:', killError);
-          }
-        } else {
-          console.log('[install-packages] Skipping pkill -f vite for ComputeProvider; restart handled in installPackages');
         }
         
         // Check which packages are already installed
