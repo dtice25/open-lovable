@@ -108,6 +108,7 @@ function AISandboxPage() {
   const [sandboxFiles, setSandboxFiles] = useState<Record<string, string>>({});
   const [hasInitialSubmission, setHasInitialSubmission] = useState<boolean>(false);
   const [fileStructure, setFileStructure] = useState<string>('');
+  const [isRestartingVite, setIsRestartingVite] = useState(false);
   
   const [conversationContext, setConversationContext] = useState<{
     scrapedWebsites: Array<{ url: string; content: any; timestamp: Date }>;
@@ -2631,6 +2632,35 @@ Tip: I automatically detect and install npm packages from your code imports (lik
     await startGeneration();
   };
 
+  const handleRestartVite = async () => {
+    if (!sandboxData) return;
+    
+    setIsRestartingVite(true);
+    addChatMessage('Restarting Vite server...', 'system');
+    
+    try {
+      const response = await fetch('/api/restart-vite', {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        addChatMessage('Vite server restarted successfully.', 'system');
+        // Refresh the iframe
+        if (iframeRef.current) {
+          iframeRef.current.src = iframeRef.current.src;
+        }
+      } else {
+        addChatMessage(`Failed to restart Vite: ${data.message || data.error}`, 'error');
+      }
+    } catch (error) {
+      addChatMessage(`Failed to restart Vite: ${(error as Error).message}`, 'error');
+    } finally {
+      setIsRestartingVite(false);
+    }
+  };
+
   const startGeneration = async () => {
     if (!homeUrlInput.trim()) return;
     
@@ -3319,6 +3349,17 @@ Focus on the key sections and content, making it clean and modern.`;
             className="p-8 rounded-lg transition-colors bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Re-apply last generation"
             disabled={!conversationContext.lastGeneratedCode || !sandboxData}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+          </button>
+          <button 
+            onClick={handleRestartVite}
+            disabled={!sandboxData || isRestartingVite}
+            className={`p-8 rounded-lg transition-colors bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed ${isRestartingVite ? 'animate-pulse' : ''}`}
+            title="Restart Vite app"
           >
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
