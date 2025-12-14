@@ -1,5 +1,6 @@
 import { createCompute } from 'computesdk';
 import { e2b } from '@computesdk/e2b';
+import { vercel } from '@computesdk/vercel';
 import { SandboxProvider, SandboxInfo, CommandResult, SandboxProviderConfig } from '../types';
 import appConfig from '@/config/app.config';
 
@@ -7,9 +8,14 @@ const WORKING_DIR = 'app';
 
 export class ComputeProvider extends SandboxProvider {
   private compute = createCompute({
-    provider: e2b({
-      apiKey: process.env.E2B_API_KEY!,
+    provider: vercel({
+      token: process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN,
+      teamId: process.env.VERCEL_TEAM_ID,
+      projectId: process.env.VERCEL_PROJECT_ID,
+      // apiKey: process.env.E2B_API_KEY!,
       timeout: appConfig.baseProviderConfig.timeoutMs,
+      runtime: 'node',
+      ports: [appConfig.baseProviderConfig.vitePort],
     }),
     apiKey: process.env.COMPUTESDK_API_KEY,
   });
@@ -98,7 +104,7 @@ export class ComputeProvider extends SandboxProvider {
       this.sandboxInfo = {
         sandboxId,
         url: previewUrl,
-        provider: 'e2b',
+        provider: 'vercel',
         createdAt: new Date(),
       };
 
@@ -275,7 +281,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: ${appConfig.baseProviderConfig.vitePort},
     strictPort: true,
     hmr: false,
     allowedHosts: ['.e2b.app', '.e2b.dev', '.vercel.run', 'localhost', '127.0.0.1', '.computesdk.com'],
@@ -393,8 +399,8 @@ body {
     await this.sandbox.runCommand('pkill -f vite || true');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Start Vite dev server in background, log to file for debugging
-    await this.sandbox.runCommand(`cd ${WORKING_DIR} && nohup npm run dev > vite.log 2>&1 &`);
+    // Start Vite dev server in background, log to file for debugging - fire and forget
+    this.sandbox.runCommand(`cd ${WORKING_DIR} && nohup npm run dev > vite.log 2>&1 &`);
 
     await new Promise(resolve => setTimeout(resolve, appConfig.baseProviderConfig.viteStartupDelay));
 

@@ -1,18 +1,23 @@
 import { createCompute } from 'computesdk';
 import { e2b } from '@computesdk/e2b';
+import { vercel } from '@computesdk/vercel';
 import type { SandboxInfo } from '../types';
 import { appConfig } from '@/config/app.config';
 
 export class ComputeSandbox {
   private sandbox: any | null = null;
   private sandboxInfo: SandboxInfo | null = null;
-  // Create compute instance with E2B provider
   private compute = createCompute({
-    provider: e2b({
-      apiKey: process.env.E2B_API_KEY!,
+    provider: vercel({
+      token: process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN,
+      teamId: process.env.VERCEL_TEAM_ID,
+      projectId: process.env.VERCEL_PROJECT_ID,
+      // apiKey: process.env.E2B_API_KEY!,
       timeout: appConfig.baseProviderConfig.timeoutMs,
+      runtime: 'node',
+      ports: [appConfig.baseProviderConfig.vitePort],
     }),
-    apiKey: process.env.COMPUTESDK_API_KEY
+    apiKey: process.env.COMPUTESDK_API_KEY,
   });
 
   async createSandboxAndTest(): Promise<void> {
@@ -22,7 +27,7 @@ export class ComputeSandbox {
     this.sandboxInfo = {
       sandboxId,
       url: '',
-      provider: 'e2b',
+      provider: 'vercel',
       createdAt: new Date(),
     };
 
@@ -111,7 +116,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: ${appConfig.baseProviderConfig.vitePort},
     strictPort: true,
     hmr: false,
     allowedHosts: ['.e2b.app', '.e2b.dev', '.vercel.run', 'localhost', '127.0.0.1', '.computesdk.com', '.proxy.daytona.work'],
@@ -167,13 +172,7 @@ export default App
     await this.sandbox.writeFile('app/src/App.jsx', appJsx);
     console.log('[ComputeSandbox:testComputeClient] Wrote src/App.jsx');
 
-    // Step 2: Install dependencies
-    // First check where we are and what files exist
-    const pwdResult = await this.sandbox.runCommand('pwd', []);
-    console.log('[ComputeSandbox:testComputeClient] Current directory:', pwdResult.stdout?.trim());
-    const lsResult = await this.sandbox.runCommand('ls', ['-la', 'app']);
-    console.log('[ComputeSandbox:testComputeClient] Files in app/:', lsResult.stdout);
-    
+    // Step 2: Install dependencies    
     console.log('[ComputeSandbox:testComputeClient] Running npm install in app/');
     const installResult = await this.sandbox.runCommand('cd app && npm install');
     console.log('[ComputeSandbox:testComputeClient] npm install exitCode:', installResult.exitCode);
@@ -183,22 +182,10 @@ export default App
 
     // Step 3: Start Vite dev server (background process)
     console.log('[ComputeSandbox:testComputeClient] Starting Vite dev server...');
-    await this.sandbox.runCommand('cd app && nohup npm run dev > vite.log 2>&1 &');
+    this.sandbox.runCommand('cd app && nohup npm run dev > vite.log 2>&1 &');
 
     // Wait for Vite to start
     await new Promise(resolve => setTimeout(resolve, 5000));
-
-    // Check if Vite is running
-    const psResult = await this.sandbox.runCommand('ps aux | grep -E "(vite|node)" | head -10');
-    console.log('[ComputeSandbox:testComputeClient] Vite processes:', psResult.stdout?.substring(0, 800));
-
-    // Test if Vite is responding locally
-    const curlResult = await this.sandbox.runCommand('curl -s -o /dev/null -w "%{http_code} %{time_total}s" http://localhost:5173/');
-    console.log('[ComputeSandbox:testComputeClient] Local curl test:', curlResult.stdout);
-
-    // Check Vite log if it exists
-    const logResult = await this.sandbox.runCommand('cat app/vite.log 2>/dev/null || echo "no log"');
-    console.log('[ComputeSandbox:testComputeClient] Vite log:', logResult.stdout?.substring(0, 500));
 
     // Step 4: Get preview URL using sandbox.getUrl()
     const previewUrl = await this.sandbox.getUrl({ port: 5173 });
