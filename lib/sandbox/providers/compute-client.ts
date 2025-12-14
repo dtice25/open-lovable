@@ -182,7 +182,11 @@ export default App
 
     // Step 3: Start Vite dev server (background process)
     console.log('[ComputeSandbox:testComputeClient] Starting Vite dev server...');
-    this.sandbox.runCommand('cd app && nohup npm run dev > vite.log 2>&1 &');
+    this.sandbox.runCommand('cd app && npm run dev > vite.log 2>&1', {
+      background: true,
+    }).catch((e: any) => {
+      console.error('[ComputeSandbox:testComputeClient] npm run dev Vite error:', e.message);
+    });
 
     // Wait for Vite to start
     await new Promise(resolve => setTimeout(resolve, 5000));

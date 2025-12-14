@@ -400,7 +400,11 @@ body {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Start Vite dev server in background, log to file for debugging - fire and forget
-    this.sandbox.runCommand(`cd ${WORKING_DIR} && nohup npm run dev > vite.log 2>&1 &`);
+    this.sandbox.runCommand(`cd ${WORKING_DIR} && npm run dev > vite.log 2>&1`, {
+      background: true,
+    }).catch((e: any) => {
+      console.error('[ComputeSandbox:testComputeClient] npm run dev Vite error:', e.message);
+    });
 
     await new Promise(resolve => setTimeout(resolve, appConfig.baseProviderConfig.viteStartupDelay));
 
