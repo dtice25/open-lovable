@@ -2,6 +2,7 @@ import { SandboxProvider, SandboxProviderConfig } from './types';
 import { E2BProvider } from './providers/e2b-provider';
 import { VercelProvider } from './providers/vercel-provider';
 import { DaytonaProvider } from './providers/daytona-provider';
+import { ModalProvider } from './providers/modal-provider';
 
 export class SandboxFactory {
   static create(provider?: string, config?: SandboxProviderConfig): SandboxProvider {
@@ -18,6 +19,9 @@ export class SandboxFactory {
 
       case 'daytona':
         return new DaytonaProvider(config || {});
+        
+      case 'modal':
+        return new ModalProvider(config || {});
       
       default:
         throw new Error(`Unknown sandbox provider: ${selectedProvider}. Supported providers: e2b, vercel`);
@@ -25,7 +29,7 @@ export class SandboxFactory {
   }
   
   static getAvailableProviders(): string[] {
-    return ['e2b', 'vercel', 'daytona'];
+    return ['e2b', 'vercel', 'daytona', 'modal'];
   }
   
   static isProviderAvailable(provider: string): boolean {
@@ -40,6 +44,9 @@ export class SandboxFactory {
 
       case 'daytona':
         return !!process.env.DAYTONA_API_KEY;
+
+      case 'modal':
+        return (!!process.env.MODAL_TOKEN_ID && !!process.env.MODAL_TOKEN_SECRET);
       
       default:
         return false;

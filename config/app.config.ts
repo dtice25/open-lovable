@@ -36,6 +36,12 @@ export const appConfig = {
       workingDirectory: '/home/daytona',
     },
 
+    // MODAL
+    modal: {
+      // Working directory in sandbox
+      workingDirectory: '',
+    },
+
     //VERCEL
     vercel: {
       // Working directory in sandbox
