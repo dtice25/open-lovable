@@ -39,7 +39,7 @@ export const appConfig = {
     // MODAL
     modal: {
       // Working directory in sandbox
-      workingDirectory: '/app',
+      workingDirectory: '/home',
     },
 
     //VERCEL
