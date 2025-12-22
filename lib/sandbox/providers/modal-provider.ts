@@ -283,6 +283,7 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: [
       '.modal.run',
+      '.modal.host',
       'localhost',
       '127.0.0.1',
     ],
