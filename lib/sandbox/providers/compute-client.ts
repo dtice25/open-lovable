@@ -5,23 +5,15 @@ import { appConfig } from '@/config/app.config';
 export class ComputeSandbox {
   private sandbox: any | null = null;
   private sandboxInfo: SandboxInfo | null = null;
-  private compute = compute({
-    provider: 'e2b',
-    apiKey: process.env.COMPUTESDK_API_KEY!,
-    e2b: { 
-      apiKey: process.env.E2B_API_KEY!,
-      templateId: 'node-22',
-    },
-  });
 
   async createSandboxAndTest(): Promise<void> {
-    this.sandbox = await this.compute.sandbox.create();
+    this.sandbox = await compute.sandbox.create();
 
     const sandboxId = this.sandbox?.sandboxId || 'unknown';
     this.sandboxInfo = {
       sandboxId,
       url: '',
-      provider: 'e2b',
+      provider: 'daytona',
       createdAt: new Date(),
     };
 
@@ -30,47 +22,9 @@ export class ComputeSandbox {
     await this.testComputeClient();
   }
 
+  // give it 2 seconds just to make sure compute is installed
   private async waitForCompute(): Promise<void> {
-    if (!this.sandbox) {
-      throw new Error('No active sandbox');
-    }
-
-    const apiKey = process.env.COMPUTESDK_API_KEY;
-    if (!apiKey) {
-      throw new Error('COMPUTESDK_API_KEY environment variable is not set');
-    }
-
-    // Quick retry loop - check every 500ms for up to 10 seconds
-    const maxWaitMs = 10000;
-    const pollIntervalMs = 500;
-    const startTime = Date.now();
-    let status: any;
-
-    console.log('[ComputeSandbox:waitForCompute] Checking compute status...');
-    while (Date.now() - startTime < maxWaitMs) {
-      status = await this.sandbox.runCommand('compute', ['status']);
-      if (status.exitCode === 0) {
-        console.log(`[ComputeSandbox:waitForCompute] Compute ready after ${Date.now() - startTime}ms`);
-        return;
-      }
-      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
-    }
-
-    // Only curl if still not available after retries
-    if (status.exitCode !== 0) {
-      console.log('[ComputeSandbox:waitForCompute] Compute CLI not auto-installed, installing via curl...');
-      const installCommand = `echo 'n' | curl -fsSL https://www.computesdk.com/install.sh | bash -s -- --api-key ${apiKey}`;
-      const installResult = await this.sandbox.runCommand('bash', ['-c', installCommand]);
-      console.log('[ComputeSandbox:waitForCompute] installResult exitCode:', installResult.exitCode);
-
-      // Check status again after install
-      status = await this.sandbox.runCommand('compute', ['status']);
-    }
-
-    if (status.exitCode !== 0) {
-      const message = status.stderr || status.stdout || 'Failed to get Compute status';
-      throw new Error(message);
-    }
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
   async testComputeClient(): Promise<void> {
