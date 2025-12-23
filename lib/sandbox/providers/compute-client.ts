@@ -1,4 +1,4 @@
-import { createCompute } from 'computesdk';
+import { compute } from 'computesdk';
 import { e2b } from '@computesdk/e2b';
 import { vercel } from '@computesdk/vercel';
 import type { SandboxInfo } from '../types';
@@ -7,17 +7,13 @@ import { appConfig } from '@/config/app.config';
 export class ComputeSandbox {
   private sandbox: any | null = null;
   private sandboxInfo: SandboxInfo | null = null;
-  private compute = createCompute({
-    provider: vercel({
-      token: process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN,
-      teamId: process.env.VERCEL_TEAM_ID,
-      projectId: process.env.VERCEL_PROJECT_ID,
-      // apiKey: process.env.E2B_API_KEY!,
-      timeout: appConfig.baseProviderConfig.timeoutMs,
-      runtime: 'node',
-      ports: [appConfig.baseProviderConfig.vitePort],
-    }),
-    apiKey: process.env.COMPUTESDK_API_KEY,
+  private compute = compute({
+    provider: 'e2b',
+    apiKey: process.env.COMPUTESDK_API_KEY!,
+    e2b: { 
+      apiKey: process.env.E2B_API_KEY!,
+      templateId: 'node-22',
+    },
   });
 
   async createSandboxAndTest(): Promise<void> {
@@ -27,7 +23,7 @@ export class ComputeSandbox {
     this.sandboxInfo = {
       sandboxId,
       url: '',
-      provider: 'vercel',
+      provider: 'e2b',
       createdAt: new Date(),
     };
 
@@ -105,7 +101,7 @@ export class ComputeSandbox {
         vite: '^5.0.0'
       }
     };
-    await this.sandbox.writeFile('app/package.json', JSON.stringify(packageJson, null, 2));
+    await this.sandbox.filesystem.writeFile('app/package.json', JSON.stringify(packageJson, null, 2));
     console.log('[ComputeSandbox:testComputeClient] Wrote package.json');
 
     // vite.config.js
@@ -119,11 +115,11 @@ export default defineConfig({
     port: ${appConfig.baseProviderConfig.vitePort},
     strictPort: true,
     hmr: false,
-    allowedHosts: ['.e2b.app', '.e2b.dev', '.vercel.run', 'localhost', '127.0.0.1', '.computesdk.com', '.proxy.daytona.work'],
+    allowedHosts: ['.e2b.app', '.e2b.dev', '.vercel.run', 'localhost', '127.0.0.1', '.computesdk.com', '.proxy.daytona.work', '.modal.host', '.modal.run'],
   },
 })
 `;
-    await this.sandbox.writeFile('app/vite.config.js', viteConfig);
+    await this.sandbox.filesystem.writeFile('app/vite.config.js', viteConfig);
     console.log('[ComputeSandbox:testComputeClient] Wrote vite.config.js');
 
     // index.html
@@ -140,7 +136,7 @@ export default defineConfig({
   </body>
 </html>
 `;
-    await this.sandbox.writeFile('app/index.html', indexHtml);
+    await this.sandbox.filesystem.writeFile('app/index.html', indexHtml);
     console.log('[ComputeSandbox:testComputeClient] Wrote index.html');
 
     // src/main.jsx
@@ -154,7 +150,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>,
 )
 `;
-    await this.sandbox.writeFile('app/src/main.jsx', mainJsx);
+    await this.sandbox.filesystem.writeFile('app/src/main.jsx', mainJsx);
     console.log('[ComputeSandbox:testComputeClient] Wrote src/main.jsx');
 
     // src/App.jsx
@@ -169,20 +165,23 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
 export default App
 `;
-    await this.sandbox.writeFile('app/src/App.jsx', appJsx);
+    await this.sandbox.filesystem.writeFile('app/src/App.jsx', appJsx);
     console.log('[ComputeSandbox:testComputeClient] Wrote src/App.jsx');
 
     // Step 2: Install dependencies    
     console.log('[ComputeSandbox:testComputeClient] Running npm install in app/');
-    const installResult = await this.sandbox.runCommand('cd app && npm install');
+    const installResult = await this.sandbox.runCommand('bash', ['-c', 'cd app && npm install']);
     console.log('[ComputeSandbox:testComputeClient] npm install exitCode:', installResult.exitCode);
     if (installResult.stdout) {
       console.log('[ComputeSandbox:testComputeClient] npm install stdout:', installResult.stdout.substring(0, 500));
     }
+    if (installResult.stderr) {
+      console.log('[ComputeSandbox:testComputeClient] npm install stderr:', installResult.stderr.substring(0, 500));
+    }
 
     // Step 3: Start Vite dev server (background process)
     console.log('[ComputeSandbox:testComputeClient] Starting Vite dev server...');
-    this.sandbox.runCommand('cd app && npm run dev > vite.log 2>&1', {
+    this.sandbox.runCommand('bash', ['-c', 'cd app && npm run dev > vite.log 2>&1'], {
       background: true,
     }).catch((e: any) => {
       console.error('[ComputeSandbox:testComputeClient] npm run dev Vite error:', e.message);
