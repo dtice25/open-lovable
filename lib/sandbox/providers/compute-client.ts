@@ -1,6 +1,4 @@
 import { compute } from 'computesdk';
-import { e2b } from '@computesdk/e2b';
-import { vercel } from '@computesdk/vercel';
 import type { SandboxInfo } from '../types';
 import { appConfig } from '@/config/app.config';
 
