@@ -13,7 +13,7 @@ export class ComputeSandbox {
     this.sandboxInfo = {
       sandboxId,
       url: '',
-      provider: 'daytona',
+      provider: 'modal',
       createdAt: new Date(),
     };
 
@@ -22,14 +22,9 @@ export class ComputeSandbox {
     await this.testComputeClient();
   }
 
-  // give it 2 seconds just to make sure compute is installed
-  private async waitForCompute(): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
-
   async testComputeClient(): Promise<void> {
     console.log('[ComputeSandbox:testComputeClient] Starting client test...');
-    await this.waitForCompute();
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Step 1: Create /app directory and scaffold minimal Vite app
     console.log('[ComputeSandbox:testComputeClient] Creating /app directory...');
