@@ -1,25 +1,10 @@
-import { createCompute } from 'computesdk';
-import { e2b } from '@computesdk/e2b';
-import { vercel } from '@computesdk/vercel';
+import { compute } from 'computesdk';
 import { SandboxProvider, SandboxInfo, CommandResult, SandboxProviderConfig } from '../types';
 import appConfig from '@/config/app.config';
 
 const WORKING_DIR = 'app';
 
 export class ComputeProvider extends SandboxProvider {
-  private compute = createCompute({
-    provider: vercel({
-      token: process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN,
-      teamId: process.env.VERCEL_TEAM_ID,
-      projectId: process.env.VERCEL_PROJECT_ID,
-      // apiKey: process.env.E2B_API_KEY!,
-      timeout: appConfig.baseProviderConfig.timeoutMs,
-      runtime: 'node',
-      ports: [appConfig.baseProviderConfig.vitePort],
-    }),
-    apiKey: process.env.COMPUTESDK_API_KEY,
-  });
-
   constructor(config: SandboxProviderConfig) {
     super(config);
   }
@@ -90,7 +75,7 @@ export class ComputeProvider extends SandboxProvider {
       }
 
       console.log('[ComputeProvider] Creating E2B sandbox via ComputeSDK...');
-      this.sandbox = await this.compute.sandbox.create();
+      this.sandbox = await compute.sandbox.create();
 
       const sandboxId = this.sandbox.sandboxId;
 
