@@ -51,7 +51,6 @@ export default function HomePage() {
   const [showInstructionsForIndex, setShowInstructionsForIndex] = useState<number | null>(null);
   const [additionalInstructions, setAdditionalInstructions] = useState<string>('');
   const [extendBrandStyles, setExtendBrandStyles] = useState<boolean>(false);
-  const [isComputeTestRunning, setIsComputeTestRunning] = useState<boolean>(false);
   const router = useRouter();
   
   // Simple URL validation
@@ -83,28 +82,6 @@ export default function HomePage() {
     id: model,
     name: appConfig.ai.modelDisplayNames[model] || model,
   }));
-
-  const handleComputeClientTest = async () => {
-    try {
-      setIsComputeTestRunning(true);
-      const response = await fetch('/api/test-compute-client', {
-        method: 'POST',
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (response.ok) {
-        toast.success('Compute client test started. Check server logs.');
-      } else {
-        toast.error(data.error || 'Compute client test failed');
-      }
-    } catch (error) {
-      console.error('Compute client test error:', error);
-      toast.error('Request to test compute client failed');
-    } finally {
-      setIsComputeTestRunning(false);
-    }
-  };
 
   const handleSubmit = async (selectedResult?: SearchResult) => {
     const inputValue = url.trim();
@@ -295,20 +272,6 @@ export default function HomePage() {
               >
                 Powered by Firecrawl.
               </Link>
-              <div className="mt-6 flex justify-center">
-                <ButtonUI
-                  variant="primary"
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    if (!isComputeTestRunning) {
-                      await handleComputeClientTest();
-                    }
-                  }}
-                  disabled={isComputeTestRunning}
-                >
-                  {isComputeTestRunning ? 'Running Compute Client Test...' : 'Test Compute Client in E2B'}
-                </ButtonUI>
-              </div>
             </div>
           </div>
 
