@@ -643,13 +643,7 @@ export async function POST(request: NextRequest) {
               fileContent = fileContent.replace(/shadow-5xl/g, 'shadow-2xl');
             }
 
-            // Create directory if needed
-            const dirPath = normalizedPath.includes('/') ? normalizedPath.substring(0, normalizedPath.lastIndexOf('/')) : '';
-            if (dirPath) {
-              await providerInstance.runCommand(`mkdir -p ${dirPath}`);
-            }
-
-            // Write the file using provider
+            // Write the file using provider (writeFile handles mkdir internally)
             await providerInstance.writeFile(normalizedPath, fileContent);
 
             // Update file cache
