@@ -35,7 +35,7 @@ export interface SandboxProviderConfig {
     timeoutMs?: number;
     template?: string;
   };
-  modal?: {
+    modal?: {
     tokenId: string;
     tokenSecret: string;
     timeoutMs?: number;

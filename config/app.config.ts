@@ -42,6 +42,12 @@ export const appConfig = {
       workingDirectory: '/home',
     },
 
+    // MODAL
+    modal: {
+      // Working directory in sandbox
+      workingDirectory: '/home',
+    },
+
     //VERCEL
     vercel: {
       // Working directory in sandbox
