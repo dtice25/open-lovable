@@ -6,6 +6,7 @@ import { appConfig } from '@/config/app.config';
 
 export class E2BProvider extends SandboxProvider {
   private existingFiles: Set<string> = new Set();
+  
   // Create compute instance with E2B provider
   private compute = createCompute({
     provider: e2b({

@@ -71,14 +71,13 @@ export async function POST(request: NextRequest) {
         
         // Stop any existing development server first
         await sendProgress({ type: 'status', message: 'Stopping development server...' });
-        
-        try {
-          // Try to kill any running dev server processes
-          await providerInstance.runCommand('pkill -f vite');
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait a bit
-        } catch (killError) {
-          // It's OK if no process is found
-          console.debug('[install-packages] No existing dev server found:', killError);
+          try {
+            // Try to kill any running dev server processes
+            await providerInstance.runCommand('pkill -f vite');
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait a bit
+          } catch (killError) {
+            // It's OK if no process is found
+            console.debug('[install-packages] No existing dev server found:', killError);
         }
         
         // Check which packages are already installed

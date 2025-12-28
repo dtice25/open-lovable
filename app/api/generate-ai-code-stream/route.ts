@@ -1403,7 +1403,7 @@ It's better to have 3 complete files than 10 incomplete files.`
           const searchText = tagBuffer + text;
           
           // Log streaming chunks to console
-          process.stdout.write(text);
+          // process.stdout.write(text);
           
           // Check if we're entering or leaving a tag
           const hasOpenTag = /<(file|package|packages|explanation|command|structure|template)\b/.test(text);
