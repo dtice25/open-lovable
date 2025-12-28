@@ -2,64 +2,9 @@ import { compute } from 'computesdk';
 import { SandboxProvider, SandboxInfo, CommandResult, SandboxProviderConfig } from '../types';
 import appConfig from '@/config/app.config';
 
-const WORKING_DIR = 'app';
-
 export class ComputeProvider extends SandboxProvider {
   constructor(config: SandboxProviderConfig) {
     super(config);
-  }
-
-  private resolvePath(path: string): string {
-    if (!path || path === '.') {
-      return WORKING_DIR;
-    }
-    if (path.startsWith('/')) {
-      return path;
-    }
-    return `${WORKING_DIR.replace(/\/$/, '')}/${path}`;
-  }
-
-  private async getComputeStatus(): Promise<void> {
-    if (!this.sandbox) {
-      throw new Error('No active sandbox');
-    }
-
-    const apiKey = process.env.COMPUTESDK_API_KEY;
-    if (!apiKey) {
-      throw new Error('COMPUTESDK_API_KEY environment variable is not set');
-    }
-
-    // Quick retry loop - check every 500ms for up to 10 seconds
-    const maxWaitMs = 10000;
-    const pollIntervalMs = 500;
-    const startTime = Date.now();
-    let status: any;
-
-    console.log('[ComputeProvider:getComputeStatus] Checking compute status...');
-    while (Date.now() - startTime < maxWaitMs) {
-      status = await this.sandbox.runCommand('compute status');
-      if (status.exitCode === 0) {
-        console.log(`[ComputeProvider:getComputeStatus] Compute ready after ${Date.now() - startTime}ms`);
-        return;
-      }
-      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
-    }
-
-    // Only curl if still not available after retries
-    if (status.exitCode !== 0) {
-      console.log('[ComputeProvider:getComputeStatus] Compute CLI not auto-installed, installing via curl...');
-      const installCommand = `echo 'n' | curl -fsSL https://computesdk.com/install.sh | bash -s -- --api-key ${apiKey}`;
-      const installResult = await this.sandbox.runCommand(installCommand);
-      console.log('[ComputeProvider:getComputeStatus] installResult exitCode:', installResult.exitCode);
-
-      // Check status again after install
-      status = await this.sandbox.runCommand('compute status');
-    }
-
-    if (status.exitCode !== 0) {
-      const message = status.stderr || status.stdout || 'Failed to get Compute status';
-      throw new Error(String(message));
-    }
   }
 
   async createSandbox(): Promise<SandboxInfo> {
@@ -74,13 +19,13 @@ export class ComputeProvider extends SandboxProvider {
         this.sandboxInfo = null;
       }
 
-      console.log('[ComputeProvider] Creating E2B sandbox via ComputeSDK...');
+      console.log('[ComputeProvider] Creating sandbox via ComputeSDK...');
       this.sandbox = await compute.sandbox.create();
 
       const sandboxId = this.sandbox.sandboxId;
 
-      // Wait for Compute CLI to be ready
-      await this.getComputeStatus();
+      // Make sure ComputeSDK daemon is ready
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Get preview URL for Vite port - no token needed
       const previewUrl = await this.sandbox.getUrl({ port: appConfig.baseProviderConfig.vitePort });
@@ -89,7 +34,7 @@ export class ComputeProvider extends SandboxProvider {
       this.sandboxInfo = {
         sandboxId,
         url: previewUrl,
-        provider: 'vercel',
+        provider: 'compute',
         createdAt: new Date(),
       };
 
@@ -108,7 +53,8 @@ export class ComputeProvider extends SandboxProvider {
 
     console.log('[ComputeProvider] runCommand:', command);
 
-    const result = await this.sandbox.runCommand(command);
+    // Execute via bash -c to support shell operators (&&, |) and built-ins (cd)
+    const result = await this.sandbox.runCommand('bash', ['-c', command]);
 
     const stdout = String(result.stdout || '');
     const stderr = String(result.stderr || '');
@@ -127,7 +73,9 @@ export class ComputeProvider extends SandboxProvider {
       throw new Error('No active sandbox');
     }
 
-    const fullPath = this.resolvePath(path);
+    // Normalize path to include app/ prefix
+    const fullPath = path.startsWith('app/') ? path : `app/${path}`;
+
     const start = Date.now();
     console.log('[ComputeProvider] writeFile start:', fullPath);
 
@@ -136,10 +84,10 @@ export class ComputeProvider extends SandboxProvider {
       ? fullPath.substring(0, fullPath.lastIndexOf('/'))
       : '';
     if (dirPath) {
-      await this.sandbox.runCommand(`mkdir -p ${dirPath}`);
+      await this.runCommand(`mkdir -p ${dirPath}`);
     }
 
-    await this.sandbox.writeFile(fullPath, content);
+    await this.sandbox.filesystem.writeFile(fullPath, content);
 
     const durationMs = Date.now() - start;
     console.log('[ComputeProvider] writeFile done:', fullPath, 'durationMs=', durationMs);
@@ -150,27 +98,28 @@ export class ComputeProvider extends SandboxProvider {
       throw new Error('No active sandbox');
     }
 
-    const fullPath = this.resolvePath(path);
+    // Normalize path to include app/ prefix
+    const fullPath = path.startsWith('app/') ? path : `app/${path}`;
+
     console.log('[ComputeProvider] readFile:', fullPath);
-    
+
     // Use cat command instead of sandbox.readFile to avoid timeout issues
-    const result = await this.sandbox.runCommand(`cat ${fullPath}`);
-    if (result.exitCode !== 0) {
+    const result = await this.runCommand(`cat ${fullPath}`);
+    if (!result.success) {
       throw new Error(`Failed to read file ${fullPath}: ${result.stderr || 'File not found'}`);
     }
-    return String(result.stdout ?? '');
+    return result.stdout;
   }
 
-  async listFiles(directory: string = WORKING_DIR): Promise<string[]> {
+  async listFiles(directory: string = 'app'): Promise<string[]> {
     if (!this.sandbox) {
       throw new Error('No active sandbox');
     }
 
-    const fullPath = this.resolvePath(directory);
-    console.log('[ComputeProvider] listFiles in:', fullPath);
+    console.log('[ComputeProvider] listFiles in:', directory);
 
-    const result = await this.sandbox.runCommand(`ls -1 ${fullPath}`);
-    if (result.exitCode !== 0 || !result.stdout) {
+    const result = await this.runCommand(`ls -1 ${directory}`);
+    if (!result.success || !result.stdout) {
       return [];
     }
 
@@ -190,38 +139,29 @@ export class ComputeProvider extends SandboxProvider {
     const pkgList = packages.join(' ');
 
     const command = flags
-      ? `cd ${WORKING_DIR} && npm install ${flags} ${pkgList}`
-      : `cd ${WORKING_DIR} && npm install ${pkgList}`;
+      ? `cd app && npm install ${flags} ${pkgList}`
+      : `cd app && npm install ${pkgList}`;
 
     const start = Date.now();
     console.log('[ComputeProvider] installPackages command:', command);
 
-    const result = await this.sandbox.runCommand(command);
-
-    const stdout = String(result.stdout || '');
-    const stderr = String(result.stderr || '');
-    const exitCode = typeof result.exitCode === 'number' ? result.exitCode : 0;
+    const result = await this.runCommand(command);
 
     const durationMs = Date.now() - start;
-    console.log('[ComputeProvider] installPackages exitCode:', exitCode, 'durationMs=', durationMs);
-    if (stdout) {
-      console.log('[ComputeProvider] installPackages stdout (truncated):', stdout.substring(0, 1000));
+    console.log('[ComputeProvider] installPackages exitCode:', result.exitCode, 'durationMs=', durationMs);
+    if (result.stdout) {
+      console.log('[ComputeProvider] installPackages stdout (truncated):', result.stdout.substring(0, 1000));
     }
-    if (stderr) {
-      console.log('[ComputeProvider] installPackages stderr (truncated):', stderr.substring(0, 1000));
+    if (result.stderr) {
+      console.log('[ComputeProvider] installPackages stderr (truncated):', result.stderr.substring(0, 1000));
     }
 
-    if (appConfig.packages.autoRestartVite && exitCode === 0) {
+    if (appConfig.packages.autoRestartVite && result.success) {
       console.log('[ComputeProvider] installPackages: autoRestartVite enabled, restarting Vite...');
       await this.restartViteServer();
     }
 
-    return {
-      stdout,
-      stderr,
-      exitCode,
-      success: exitCode === 0,
-    };
+    return result;
   }
 
   async setupViteApp(): Promise<void> {
@@ -230,10 +170,10 @@ export class ComputeProvider extends SandboxProvider {
     }
 
     const start = Date.now();
-    console.log('[ComputeProvider] setupViteApp: creating minimal Vite+React structure in', WORKING_DIR);
+    console.log('[ComputeProvider] setupViteApp: creating minimal Vite+React structure in app');
 
     // Create basic directory structure
-    await this.sandbox.runCommand(`mkdir -p ${WORKING_DIR}/src`);
+    await this.runCommand('mkdir -p app/src');
 
     const packageJson = {
       name: 'sandbox-app',
@@ -257,7 +197,7 @@ export class ComputeProvider extends SandboxProvider {
       },
     };
 
-    await this.sandbox.writeFile(`${WORKING_DIR}/package.json`, JSON.stringify(packageJson, null, 2));
+    await this.sandbox.filesystem.writeFile('app/package.json', JSON.stringify(packageJson, null, 2));
 
     const viteConfig = `import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -273,7 +213,7 @@ export default defineConfig({
   },
 })
 `;
-    await this.sandbox.writeFile(`${WORKING_DIR}/vite.config.js`, viteConfig);
+    await this.sandbox.filesystem.writeFile('app/vite.config.js', viteConfig);
 
     const tailwindConfig = `/** @type {import('tailwindcss').Config} */
 export default {
@@ -287,7 +227,7 @@ export default {
   plugins: [],
 }
 `;
-    await this.sandbox.writeFile(`${WORKING_DIR}/tailwind.config.js`, tailwindConfig);
+    await this.sandbox.filesystem.writeFile('app/tailwind.config.js', tailwindConfig);
 
     const postcssConfig = `export default {
   plugins: {
@@ -296,7 +236,7 @@ export default {
   },
 }
 `;
-    await this.sandbox.writeFile(`${WORKING_DIR}/postcss.config.js`, postcssConfig);
+    await this.sandbox.filesystem.writeFile('app/postcss.config.js', postcssConfig);
 
     const indexHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -311,7 +251,7 @@ export default {
   </body>
 </html>
 `;
-    await this.sandbox.writeFile(`${WORKING_DIR}/index.html`, indexHtml);
+    await this.sandbox.filesystem.writeFile('app/index.html', indexHtml);
 
     const mainJsx = `import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -324,7 +264,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>,
 );
 `;
-    await this.sandbox.writeFile(`${WORKING_DIR}/src/main.jsx`, mainJsx);
+    await this.sandbox.filesystem.writeFile('app/src/main.jsx', mainJsx);
 
     const appJsx = `function App() {
   return (
@@ -341,7 +281,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
 export default App
 `;
-    await this.sandbox.writeFile(`${WORKING_DIR}/src/App.jsx`, appJsx);
+    await this.sandbox.filesystem.writeFile('app/src/App.jsx', appJsx);
 
     const indexCss = `@tailwind base;
 @tailwind components;
@@ -352,19 +292,19 @@ body {
   background-color: rgb(17 24 39);
 }
 `;
-    await this.sandbox.writeFile(`${WORKING_DIR}/src/index.css`, indexCss);
+    await this.sandbox.filesystem.writeFile('app/src/index.css', indexCss);
 
     console.log('[ComputeProvider] setupViteApp: files written, running npm install...');
 
     const flags = appConfig.packages.useLegacyPeerDeps ? '--legacy-peer-deps' : '';
     const installCommand = flags
-      ? `cd ${WORKING_DIR} && npm install ${flags}`
-      : `cd ${WORKING_DIR} && npm install`;
+      ? `cd app && npm install ${flags}`
+      : `cd app && npm install`;
 
-    const installResult = await this.sandbox.runCommand(installCommand);
+    const installResult = await this.runCommand(installCommand);
     console.log('[ComputeProvider] npm install exitCode:', installResult.exitCode);
     if (installResult.stdout) {
-      console.log('[ComputeProvider] npm install stdout (truncated):', String(installResult.stdout).substring(0, 1000));
+      console.log('[ComputeProvider] npm install stdout (truncated):', installResult.stdout.substring(0, 1000));
     }
 
     console.log('[ComputeProvider] setupViteApp: starting Vite dev server...');
@@ -381,11 +321,11 @@ body {
     const start = Date.now();
 
     // Kill existing Vite process
-    await this.sandbox.runCommand('pkill -f vite || true');
+    await this.runCommand('pkill -f vite || true');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Start Vite dev server in background, log to file for debugging - fire and forget
-    this.sandbox.runCommand(`cd ${WORKING_DIR} && npm run dev > vite.log 2>&1`, {
+    this.sandbox.runCommand('bash', ['-c', 'cd app && npm run dev > vite.log 2>&1'], {
       background: true,
     }).catch((e: any) => {
       console.error('[ComputeSandbox:testComputeClient] npm run dev Vite error:', e.message);
@@ -394,15 +334,15 @@ body {
     await new Promise(resolve => setTimeout(resolve, appConfig.baseProviderConfig.viteStartupDelay));
 
     // Debug: check for running Vite processes
-    const psResult = await this.sandbox.runCommand('ps aux | grep vite | head -5');
+    const psResult = await this.runCommand('ps aux | grep vite | head -5');
     if (psResult.stdout) {
-      console.log('[ComputeProvider] restartViteServer ps stdout:', String(psResult.stdout).substring(0, 500));
+      console.log('[ComputeProvider] restartViteServer ps stdout:', psResult.stdout.substring(0, 500));
     }
 
     // Check Vite log for errors
-    const logResult = await this.sandbox.runCommand(`tail -20 ${WORKING_DIR}/vite.log`);
+    const logResult = await this.runCommand('tail -20 app/vite.log');
     if (logResult.stdout) {
-      console.log('[ComputeProvider] restartViteServer vite.log:', String(logResult.stdout).substring(0, 1000));
+      console.log('[ComputeProvider] restartViteServer vite.log:', logResult.stdout.substring(0, 1000));
     }
 
     const durationMs = Date.now() - start;

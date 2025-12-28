@@ -7,7 +7,7 @@ export interface SandboxFile {
 export interface SandboxInfo {
   sandboxId: string;
   url: string;
-  provider: 'e2b' | 'vercel' | 'daytona' | 'modal';
+  provider: 'e2b' | 'vercel' | 'daytona' | 'modal' | 'compute';
   createdAt: Date;
 }
 
