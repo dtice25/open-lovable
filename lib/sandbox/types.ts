@@ -7,7 +7,7 @@ export interface SandboxFile {
 export interface SandboxInfo {
   sandboxId: string;
   url: string;
-  provider: 'e2b' | 'vercel' | 'compute';
+  provider: 'compute';
   createdAt: Date;
 }
 
@@ -18,28 +18,9 @@ export interface CommandResult {
   success: boolean;
 }
 
-export interface SandboxProviderConfig {
-  e2b?: {
-    apiKey: string;
-    timeoutMs?: number;
-    template?: string;
-  };
-  vercel?: {
-    teamId?: string;
-    projectId?: string;
-    token?: string;
-    authMethod?: 'oidc' | 'pat';
-  };
-}
-
 export abstract class SandboxProvider {
-  protected config: SandboxProviderConfig;
   protected sandbox: any;
   protected sandboxInfo: SandboxInfo | null = null;
-
-  constructor(config: SandboxProviderConfig) {
-    this.config = config;
-  }
 
   abstract createSandbox(): Promise<SandboxInfo>;
   abstract runCommand(command: string): Promise<CommandResult>;

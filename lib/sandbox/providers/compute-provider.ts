@@ -1,11 +1,8 @@
 import { compute } from 'computesdk';
-import { SandboxProvider, SandboxInfo, CommandResult, SandboxProviderConfig } from '../types';
+import { SandboxProvider, SandboxInfo, CommandResult } from '../types';
 import appConfig from '@/config/app.config';
 
 export class ComputeProvider extends SandboxProvider {
-  constructor(config: SandboxProviderConfig) {
-    super(config);
-  }
 
   async createSandbox(): Promise<SandboxInfo> {
     try {
