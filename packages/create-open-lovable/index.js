@@ -16,9 +16,9 @@ const program = new Command();
 
 program
   .name('create-open-lovable')
-  .description('Create a new Open Lovable project with your choice of sandbox provider')
+  .description('Create a new Open Lovable project with ComputeSDK')
   .version('1.0.0')
-  .option('-s, --sandbox <provider>', 'Sandbox provider (e2b or vercel)')
+  .option('-b, --backend <backend>', 'Sandbox backend (vercel, e2b, modal, or daytona)')
   .option('-n, --name <name>', 'Project name')
   .option('-p, --path <path>', 'Installation path (defaults to current directory)')
   .option('--skip-install', 'Skip npm install')
@@ -31,30 +31,30 @@ async function main() {
   console.log(chalk.cyan('\n🚀 Welcome to Open Lovable Setup!\n'));
 
   let config = {
-    sandbox: options.sandbox,
+    sandboxBackend: options.backend,
     name: options.name || 'my-open-lovable',
     path: options.path || process.cwd(),
     skipInstall: options.skipInstall || false,
     dryRun: options.dryRun || false
   };
 
-  // Interactive mode if sandbox not specified
-  if (!config.sandbox) {
+  // Interactive mode if sandbox backend not specified
+  if (!config.sandboxBackend) {
     const prompts = getPrompts(config);
     const answers = await inquirer.prompt(prompts);
     config = { ...config, ...answers };
   }
 
-  // Validate sandbox provider
-  if (!['e2b', 'vercel'].includes(config.sandbox)) {
-    console.error(chalk.red(`\n❌ Invalid sandbox provider: ${config.sandbox}`));
-    console.log(chalk.yellow('Valid options: e2b, vercel\n'));
+  // Validate sandbox backend
+  if (!['e2b', 'vercel', 'modal', 'daytona'].includes(config.sandboxBackend)) {
+    console.error(chalk.red(`\n❌ Invalid sandbox backend: ${config.sandboxBackend}`));
+    console.log(chalk.yellow('Valid options: vercel, e2b, modal, daytona\n'));
     process.exit(1);
   }
 
   console.log(chalk.gray('\nConfiguration:'));
   console.log(chalk.gray(`  Project: ${config.name}`));
-  console.log(chalk.gray(`  Sandbox: ${config.sandbox}`));
+  console.log(chalk.gray(`  Sandbox Backend: ${config.sandboxBackend} (via ComputeSDK)`));
   console.log(chalk.gray(`  Path: ${path.resolve(config.path, config.name)}\n`));
 
   if (config.dryRun) {

@@ -6,15 +6,14 @@ import inquirer from 'inquirer';
 import { getEnvPrompts } from './prompts.js';
 
 export async function installer(config) {
-  const { name, sandbox, path: installPath, skipInstall, dryRun, templatesDir } = config;
+  const { name, sandboxBackend, path: installPath, skipInstall, dryRun, templatesDir } = config;
   const projectPath = path.join(installPath, name);
 
   if (dryRun) {
     console.log(chalk.blue('\n📋 Dry run - would perform these actions:'));
     console.log(chalk.gray(`  - Create directory: ${projectPath}`));
     console.log(chalk.gray(`  - Copy base template files`));
-    console.log(chalk.gray(`  - Copy ${sandbox}-specific files`));
-    console.log(chalk.gray(`  - Create .env file`));
+    console.log(chalk.gray(`  - Create .env file with ${sandboxBackend} backend credentials`));
     if (!skipInstall) {
       console.log(chalk.gray(`  - Run npm install`));
     }
@@ -45,29 +44,20 @@ export async function installer(config) {
     await copyTemplate(baseTemplatePath, projectPath);
   } else {
     // If no base template exists yet, copy from the main project
-    await copyMainProject(path.dirname(templatesDir), projectPath, sandbox);
-  }
-
-  // Copy provider-specific template
-  const providerTemplatePath = path.join(templatesDir, sandbox);
-  if (await fs.pathExists(providerTemplatePath)) {
-    await copyTemplate(providerTemplatePath, projectPath);
+    await copyMainProject(path.dirname(templatesDir), projectPath);
   }
 
   // Configure environment variables
   if (config.configureEnv) {
-    const envAnswers = await inquirer.prompt(getEnvPrompts(sandbox));
-    await createEnvFile(projectPath, sandbox, envAnswers);
+    const envAnswers = await inquirer.prompt(getEnvPrompts(sandboxBackend));
+    await createEnvFile(projectPath, sandboxBackend, envAnswers);
   } else {
     // Create .env.example copy
-    await createEnvExample(projectPath, sandbox);
+    await createEnvExample(projectPath, sandboxBackend);
   }
 
   // Update package.json with project name
   await updatePackageJson(projectPath, name);
-
-  // Update configuration to use the selected sandbox provider
-  await updateAppConfig(projectPath, sandbox);
 
   // Install dependencies
   if (!skipInstall) {
@@ -97,7 +87,7 @@ async function copyTemplate(src, dest) {
   }
 }
 
-async function copyMainProject(mainProjectPath, projectPath, sandbox) {
+async function copyMainProject(mainProjectPath, projectPath) {
   // Copy essential directories and files from the main project
   const itemsToCopy = [
     'app',
@@ -135,127 +125,114 @@ async function copyMainProject(mainProjectPath, projectPath, sandbox) {
   }
 }
 
-async function createEnvFile(projectPath, sandbox, answers) {
+async function createEnvFile(projectPath, sandboxBackend, answers) {
   let envContent = '# Open Lovable Configuration\n\n';
-  
-  // Sandbox provider
-  envContent += `# Sandbox Provider\n`;
-  envContent += `SANDBOX_PROVIDER=${sandbox}\n\n`;
-  
-  // Required keys
+
+  // ComputeSDK API key (required)
+  envContent += `# REQUIRED - ComputeSDK API Key\n`;
+  envContent += `COMPUTESDK_API_KEY=${answers.computeSdkApiKey || 'your_computesdk_api_key_here'}\n\n`;
+
+  // Web scraping
   envContent += `# REQUIRED - Web scraping for cloning websites\n`;
   envContent += `FIRECRAWL_API_KEY=${answers.firecrawlApiKey || 'your_firecrawl_api_key_here'}\n\n`;
-  
-  if (sandbox === 'e2b') {
-    envContent += `# REQUIRED - E2B Sandboxes\n`;
+
+  // Sandbox backend credentials
+  envContent += `# Sandbox Backend Credentials (${sandboxBackend})\n`;
+  if (sandboxBackend === 'e2b') {
     envContent += `E2B_API_KEY=${answers.e2bApiKey || 'your_e2b_api_key_here'}\n\n`;
-  } else if (sandbox === 'vercel') {
-    envContent += `# REQUIRED - Vercel Sandboxes\n`;
+  } else if (sandboxBackend === 'vercel') {
     if (answers.vercelAuthMethod === 'oidc') {
-      envContent += `# Using OIDC authentication (automatic in Vercel environment)\n`;
+      envContent += `# Using OIDC authentication - run \`vercel link\` then \`vercel env pull\`\n`;
+      envContent += `# VERCEL_OIDC_TOKEN=auto_generated_by_vercel_env_pull\n\n`;
     } else {
       envContent += `VERCEL_TEAM_ID=${answers.vercelTeamId || 'your_team_id'}\n`;
       envContent += `VERCEL_PROJECT_ID=${answers.vercelProjectId || 'your_project_id'}\n`;
-      envContent += `VERCEL_TOKEN=${answers.vercelToken || 'your_access_token'}\n`;
+      envContent += `VERCEL_TOKEN=${answers.vercelToken || 'your_access_token'}\n\n`;
     }
-    envContent += '\n';
+  } else if (sandboxBackend === 'modal') {
+    envContent += `MODAL_TOKEN_ID=${answers.modalTokenId || 'your_token_id'}\n`;
+    envContent += `MODAL_TOKEN_SECRET=${answers.modalTokenSecret || 'your_token_secret'}\n\n`;
+  } else if (sandboxBackend === 'daytona') {
+    envContent += `DAYTONA_API_KEY=${answers.daytonaApiKey || 'your_daytona_api_key'}\n\n`;
   }
-  
+
   // Optional AI provider keys
-  envContent += `# OPTIONAL - AI Providers\n`;
-  
+  envContent += `# AI Providers (at least one required)\n`;
+
   if (answers.anthropicApiKey) {
     envContent += `ANTHROPIC_API_KEY=${answers.anthropicApiKey}\n`;
   } else {
     envContent += `# ANTHROPIC_API_KEY=your_anthropic_api_key_here\n`;
   }
-  
+
   if (answers.openaiApiKey) {
     envContent += `OPENAI_API_KEY=${answers.openaiApiKey}\n`;
   } else {
     envContent += `# OPENAI_API_KEY=your_openai_api_key_here\n`;
   }
-  
+
   if (answers.geminiApiKey) {
     envContent += `GEMINI_API_KEY=${answers.geminiApiKey}\n`;
   } else {
     envContent += `# GEMINI_API_KEY=your_gemini_api_key_here\n`;
   }
-  
+
   if (answers.groqApiKey) {
     envContent += `GROQ_API_KEY=${answers.groqApiKey}\n`;
   } else {
     envContent += `# GROQ_API_KEY=your_groq_api_key_here\n`;
   }
-  
+
   await fs.writeFile(path.join(projectPath, '.env'), envContent);
   await fs.writeFile(path.join(projectPath, '.env.example'), envContent.replace(/=.+/g, '=your_key_here'));
 }
 
-async function createEnvExample(projectPath, sandbox) {
+async function createEnvExample(projectPath, sandboxBackend) {
   let envContent = '# Open Lovable Configuration\n\n';
-  
-  envContent += `# Sandbox Provider\n`;
-  envContent += `SANDBOX_PROVIDER=${sandbox}\n\n`;
-  
+
+  envContent += `# REQUIRED - ComputeSDK API Key\n`;
+  envContent += `# Get yours at https://computesdk.com\n`;
+  envContent += `COMPUTESDK_API_KEY=your_computesdk_api_key_here\n\n`;
+
   envContent += `# REQUIRED - Web scraping for cloning websites\n`;
   envContent += `# Get yours at https://firecrawl.dev\n`;
   envContent += `FIRECRAWL_API_KEY=your_firecrawl_api_key_here\n\n`;
-  
-  if (sandbox === 'e2b') {
-    envContent += `# REQUIRED - Sandboxes for code execution\n`;
+
+  envContent += `# Sandbox Backend Credentials (${sandboxBackend})\n`;
+  if (sandboxBackend === 'e2b') {
     envContent += `# Get yours at https://e2b.dev\n`;
     envContent += `E2B_API_KEY=your_e2b_api_key_here\n\n`;
-  } else if (sandbox === 'vercel') {
-    envContent += `# REQUIRED - Vercel Sandboxes\n`;
-    envContent += `# Option 1: OIDC (automatic in Vercel environment)\n`;
+  } else if (sandboxBackend === 'vercel') {
+    envContent += `# Option 1: OIDC - run \`vercel link\` then \`vercel env pull\`\n`;
+    envContent += `# VERCEL_OIDC_TOKEN=auto_generated_by_vercel_env_pull\n`;
     envContent += `# Option 2: Personal Access Token\n`;
     envContent += `VERCEL_TEAM_ID=your_team_id\n`;
     envContent += `VERCEL_PROJECT_ID=your_project_id\n`;
     envContent += `VERCEL_TOKEN=your_access_token\n\n`;
+  } else if (sandboxBackend === 'modal') {
+    envContent += `# Get yours at https://modal.com\n`;
+    envContent += `MODAL_TOKEN_ID=your_token_id\n`;
+    envContent += `MODAL_TOKEN_SECRET=your_token_secret\n\n`;
+  } else if (sandboxBackend === 'daytona') {
+    envContent += `# Get yours at https://daytona.io\n`;
+    envContent += `DAYTONA_API_KEY=your_daytona_api_key\n\n`;
   }
-  
-  envContent += `# OPTIONAL - AI Providers (need at least one)\n`;
-  envContent += `# Get yours at https://console.anthropic.com\n`;
-  envContent += `ANTHROPIC_API_KEY=your_anthropic_api_key_here\n\n`;
-  envContent += `# Get yours at https://platform.openai.com\n`;
-  envContent += `OPENAI_API_KEY=your_openai_api_key_here\n\n`;
-  envContent += `# Get yours at https://aistudio.google.com/app/apikey\n`;
-  envContent += `GEMINI_API_KEY=your_gemini_api_key_here\n\n`;
-  envContent += `# Get yours at https://console.groq.com\n`;
-  envContent += `GROQ_API_KEY=your_groq_api_key_here\n`;
-  
+
+  envContent += `# AI Providers (at least one required)\n`;
+  envContent += `# ANTHROPIC_API_KEY=your_anthropic_api_key_here  # https://console.anthropic.com\n`;
+  envContent += `# OPENAI_API_KEY=your_openai_api_key_here  # https://platform.openai.com\n`;
+  envContent += `# GEMINI_API_KEY=your_gemini_api_key_here  # https://aistudio.google.com/app/apikey\n`;
+  envContent += `# GROQ_API_KEY=your_groq_api_key_here  # https://console.groq.com\n`;
+
   await fs.writeFile(path.join(projectPath, '.env.example'), envContent);
 }
 
 async function updatePackageJson(projectPath, name) {
   const packageJsonPath = path.join(projectPath, 'package.json');
-  
+
   if (await fs.pathExists(packageJsonPath)) {
     const packageJson = await fs.readJson(packageJsonPath);
     packageJson.name = name;
     await fs.writeJson(packageJsonPath, packageJson, { spaces: 2 });
-  }
-}
-
-async function updateAppConfig(projectPath, sandbox) {
-  const configPath = path.join(projectPath, 'config', 'app.config.ts');
-  
-  if (await fs.pathExists(configPath)) {
-    let content = await fs.readFile(configPath, 'utf-8');
-    
-    // Add sandbox provider configuration
-    const sandboxConfig = `
-  // Sandbox Provider Configuration
-  sandboxProvider: process.env.SANDBOX_PROVIDER || '${sandbox}',
-`;
-    
-    // Insert after the opening of appConfig
-    content = content.replace(
-      'export const appConfig = {',
-      `export const appConfig = {${sandboxConfig}`
-    );
-    
-    await fs.writeFile(configPath, content);
   }
 }

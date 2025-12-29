@@ -19,11 +19,11 @@ export function getPrompts(config) {
     });
   }
 
-  if (!config.sandbox) {
+  if (!config.sandboxBackend) {
     prompts.push({
       type: 'list',
-      name: 'sandbox',
-      message: 'Choose your sandbox provider:',
+      name: 'sandboxBackend',
+      message: 'Choose your sandbox backend (via ComputeSDK):',
       choices: [
         {
           name: 'E2B - Full-featured development sandboxes',
@@ -34,6 +34,16 @@ export function getPrompts(config) {
           name: 'Vercel - Lightweight ephemeral VMs',
           value: 'vercel',
           short: 'Vercel'
+        },
+        {
+          name: 'Modal - Serverless cloud compute',
+          value: 'modal',
+          short: 'Modal'
+        },
+        {
+          name: 'Daytona - Development environments',
+          value: 'daytona',
+          short: 'Daytona'
         }
       ],
       default: 'e2b'
@@ -50,10 +60,23 @@ export function getPrompts(config) {
   return prompts;
 }
 
-export function getEnvPrompts(provider) {
+export function getEnvPrompts(sandboxBackend) {
   const prompts = [];
 
-  // Always include Firecrawl API key
+  // ComputeSDK API key (always required)
+  prompts.push({
+    type: 'input',
+    name: 'computeSdkApiKey',
+    message: 'ComputeSDK API key (https://computesdk.com):',
+    validate: (input) => {
+      if (!input || input.trim() === '') {
+        return 'ComputeSDK API key is required';
+      }
+      return true;
+    }
+  });
+
+  // Firecrawl API key
   prompts.push({
     type: 'input',
     name: 'firecrawlApiKey',
@@ -66,7 +89,8 @@ export function getEnvPrompts(provider) {
     }
   });
 
-  if (provider === 'e2b') {
+  // Sandbox backend credentials based on selection
+  if (sandboxBackend === 'e2b') {
     prompts.push({
       type: 'input',
       name: 'e2bApiKey',
@@ -78,14 +102,14 @@ export function getEnvPrompts(provider) {
         return true;
       }
     });
-  } else if (provider === 'vercel') {
+  } else if (sandboxBackend === 'vercel') {
     prompts.push({
       type: 'list',
       name: 'vercelAuthMethod',
       message: 'Vercel authentication method:',
       choices: [
         {
-          name: 'OIDC Token (automatic in Vercel environment)',
+          name: 'OIDC Token (run `vercel link` then `vercel env pull`)',
           value: 'oidc',
           short: 'OIDC'
         },
@@ -131,6 +155,42 @@ export function getEnvPrompts(provider) {
       validate: (input) => {
         if (!input || input.trim() === '') {
           return 'Access token is required for PAT authentication';
+        }
+        return true;
+      }
+    });
+  } else if (sandboxBackend === 'modal') {
+    prompts.push({
+      type: 'input',
+      name: 'modalTokenId',
+      message: 'Modal Token ID:',
+      validate: (input) => {
+        if (!input || input.trim() === '') {
+          return 'Modal Token ID is required';
+        }
+        return true;
+      }
+    });
+
+    prompts.push({
+      type: 'input',
+      name: 'modalTokenSecret',
+      message: 'Modal Token Secret:',
+      validate: (input) => {
+        if (!input || input.trim() === '') {
+          return 'Modal Token Secret is required';
+        }
+        return true;
+      }
+    });
+  } else if (sandboxBackend === 'daytona') {
+    prompts.push({
+      type: 'input',
+      name: 'daytonaApiKey',
+      message: 'Daytona API key:',
+      validate: (input) => {
+        if (!input || input.trim() === '') {
+          return 'Daytona API key is required';
         }
         return true;
       }
