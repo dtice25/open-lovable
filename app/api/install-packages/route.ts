@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
         
         // Stop any existing development server first
         await sendProgress({ type: 'status', message: 'Stopping development server...' });
+        
           try {
             // Try to kill any running dev server processes
             await providerInstance.runCommand('pkill -f vite');
