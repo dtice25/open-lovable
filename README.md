@@ -20,39 +20,40 @@ pnpm install  # or npm install / yarn install
 # REQUIRED
 # =================================================================
 FIRECRAWL_API_KEY=your_firecrawl_api_key    # https://firecrawl.dev
+COMPUTESDK_API_KEY=your_api_key_here        # https://computesdk.com
 
 # =================================================================
 # AI PROVIDER - Choose your LLM
 # =================================================================
-GEMINI_API_KEY=your_gemini_api_key        # https://aistudio.google.com/app/apikey
-ANTHROPIC_API_KEY=your_anthropic_api_key  # https://console.anthropic.com
-OPENAI_API_KEY=your_openai_api_key        # https://platform.openai.com
-GROQ_API_KEY=your_groq_api_key            # https://console.groq.com
+GEMINI_API_KEY=your_gemini_api_key          # https://aistudio.google.com/app/apikey
+ANTHROPIC_API_KEY=your_anthropic_api_key    # https://console.anthropic.com
+OPENAI_API_KEY=your_openai_api_key          # https://platform.openai.com
+GROQ_API_KEY=your_groq_api_key              # https://console.groq.com
 
 # =================================================================
-# FAST APPLY (Optional - for faster edits)
+# SANDBOX BACKEND - Configure at least one
 # =================================================================
-MORPH_API_KEY=your_morphllm_api_key    # https://morphllm.com/dashboard
-
-# =================================================================
-# SANDBOX PROVIDER - Choose ONE: Vercel (default) or E2B
-# =================================================================
-SANDBOX_PROVIDER=vercel  # or 'e2b'
-
-# Option 1: Vercel Sandbox (default)
-# Choose one authentication method:
-
-# Method A: OIDC Token (recommended for development)
-# Run `vercel link` then `vercel env pull` to get VERCEL_OIDC_TOKEN automatically
+# Vercel (run `vercel link` then `vercel env pull` for OIDC)
 VERCEL_OIDC_TOKEN=auto_generated_by_vercel_env_pull
+# Or use Personal Access Token:
+# VERCEL_TEAM_ID=team_xxxxxxxxx
+# VERCEL_PROJECT_ID=prj_xxxxxxxxx
+# VERCEL_TOKEN=vercel_xxxxxxxxxxxx
 
-# Method B: Personal Access Token (for production or when OIDC unavailable)
-# VERCEL_TEAM_ID=team_xxxxxxxxx      # Your Vercel team ID 
-# VERCEL_PROJECT_ID=prj_xxxxxxxxx    # Your Vercel project ID
-# VERCEL_TOKEN=vercel_xxxxxxxxxxxx   # Personal access token from Vercel dashboard
+# E2B
+# E2B_API_KEY=your_e2b_api_key              # https://e2b.dev
 
-# Option 2: E2B Sandbox
-# E2B_API_KEY=your_e2b_api_key      # https://e2b.dev
+# Modal
+# MODAL_TOKEN_ID=your_token_id              # https://modal.com
+# MODAL_TOKEN_SECRET=your_token_secret
+
+# Daytona
+# DAYTONA_API_KEY=your_api_key              # https://daytona.io
+
+# =================================================================
+# OPTIONAL - Fast Apply
+# =================================================================
+# MORPH_API_KEY=your_morphllm_api_key       # https://morphllm.com
 ```
 
 3. **Run**
