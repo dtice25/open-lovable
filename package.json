@@ -60,7 +60,7 @@
     "class-variance-authority": "^0.7.1",
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
-    "computesdk": "^1.9.6",
+    "computesdk": "^1.10.0",
     "copy-to-clipboard": "^3.3.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",

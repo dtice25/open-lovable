@@ -13,7 +13,7 @@ export class ComputeSandbox {
     this.sandboxInfo = {
       sandboxId,
       url: '',
-      provider: 'modal',
+      provider: 'e2b',
       createdAt: new Date(),
     };
 
@@ -151,5 +151,33 @@ export default App
     console.log('[ComputeSandbox:testComputeClient] Test complete.');
   }
 
+  async destroySandbox(): Promise<void> {
+    if (!this.sandbox) {
+      console.log('[ComputeSandbox] No sandbox to destroy');
+      return;
+    }
 
+    const sandboxId = this.sandbox.sandboxId;
+    console.log(`[ComputeSandbox] Destroying sandbox: ${sandboxId}`);
+    console.log(`[ComputeSandbox] - typeof this.sandbox: ${typeof this.sandbox}`);
+    console.log(`[ComputeSandbox] - constructor.name: ${this.sandbox?.constructor?.name}`);
+    console.log(`[ComputeSandbox] - has destroy: ${typeof this.sandbox?.destroy}`);
+    console.log(`[ComputeSandbox] - keys:`, Object.keys(this.sandbox));
+    
+    try {
+      const result = await this.sandbox.destroy();
+      console.log(`[ComputeSandbox] destroy() returned:`, result);
+      console.log(`[ComputeSandbox] Sandbox ${sandboxId} destroyed successfully`);
+    } catch (e) {
+      console.error(`[ComputeSandbox] Failed to destroy sandbox ${sandboxId}:`, e);
+      throw e;
+    } finally {
+      this.sandbox = null;
+      this.sandboxInfo = null;
+    }
+  }
+
+  getSandbox(): any {
+    return this.sandbox;
+  }
 }

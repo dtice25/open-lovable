@@ -52,6 +52,7 @@ export default function HomePage() {
   const [additionalInstructions, setAdditionalInstructions] = useState<string>('');
   const [extendBrandStyles, setExtendBrandStyles] = useState<boolean>(false);
   const [isComputeTestRunning, setIsComputeTestRunning] = useState<boolean>(false);
+  const [isDestroyingsandbox, setIsDestroyingsandbox] = useState<boolean>(false);
   const router = useRouter();
   
   // Simple URL validation
@@ -103,6 +104,28 @@ export default function HomePage() {
       toast.error('Request to test compute client failed');
     } finally {
       setIsComputeTestRunning(false);
+    }
+  };
+
+  const handleDestroySandbox = async () => {
+    try {
+      setIsDestroyingsandbox(true);
+      const response = await fetch('/api/destroy-compute-sandbox', {
+        method: 'POST',
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok) {
+        toast.success('Sandbox destroyed successfully. Check server logs.');
+      } else {
+        toast.error(data.error || data.message || 'Failed to destroy sandbox');
+      }
+    } catch (error) {
+      console.error('Destroy sandbox error:', error);
+      toast.error('Request to destroy sandbox failed');
+    } finally {
+      setIsDestroyingsandbox(false);
     }
   };
 
@@ -295,7 +318,7 @@ export default function HomePage() {
               >
                 Powered by Firecrawl.
               </Link>
-              <div className="mt-6 flex justify-center">
+              <div className="mt-6 flex justify-center gap-4">
                 <ButtonUI
                   variant="primary"
                   onClick={async (e) => {
@@ -306,7 +329,19 @@ export default function HomePage() {
                   }}
                   disabled={isComputeTestRunning}
                 >
-                  {isComputeTestRunning ? 'Running Compute Client Test...' : 'Test Compute Client in E2B'}
+                  {isComputeTestRunning ? 'Running Compute Client Test...' : 'Test Compute Client in Sandbox'}
+                </ButtonUI>
+                <ButtonUI
+                  variant="tertiary"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (!isDestroyingsandbox) {
+                      await handleDestroySandbox();
+                    }
+                  }}
+                  disabled={isDestroyingsandbox}
+                >
+                  {isDestroyingsandbox ? 'Destroying Sandbox...' : 'Destroy Sandbox'}
                 </ButtonUI>
               </div>
             </div>
