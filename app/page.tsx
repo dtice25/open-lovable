@@ -53,6 +53,8 @@ export default function HomePage() {
   const [extendBrandStyles, setExtendBrandStyles] = useState<boolean>(false);
   const [isComputeTestRunning, setIsComputeTestRunning] = useState<boolean>(false);
   const [isDestroyingsandbox, setIsDestroyingsandbox] = useState<boolean>(false);
+  const [sandboxId, setSandboxId] = useState<string | null>(null);
+  const [isReconnectTestRunning, setIsReconnectTestRunning] = useState<boolean>(false);
   const router = useRouter();
   
   // Simple URL validation
@@ -96,6 +98,9 @@ export default function HomePage() {
 
       if (response.ok) {
         toast.success('Compute client test started. Check server logs.');
+        if (data.sandboxId) {
+          setSandboxId(data.sandboxId);
+        }
       } else {
         toast.error(data.error || 'Compute client test failed');
       }
@@ -104,6 +109,35 @@ export default function HomePage() {
       toast.error('Request to test compute client failed');
     } finally {
       setIsComputeTestRunning(false);
+    }
+  };
+
+  const handleReconnectTest = async () => {
+    if (!sandboxId) {
+      toast.error('No sandbox ID available. Run the compute client test first.');
+      return;
+    }
+
+    try {
+      setIsReconnectTestRunning(true);
+      const response = await fetch('/api/test-reconnect-sandbox', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sandboxId }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok) {
+        toast.success('Reconnection test passed. /app cleared successfully.');
+      } else {
+        toast.error(data.error || 'Reconnection test failed');
+      }
+    } catch (error) {
+      console.error('Reconnect test error:', error);
+      toast.error('Request to test reconnection failed');
+    } finally {
+      setIsReconnectTestRunning(false);
     }
   };
 
@@ -343,6 +377,20 @@ export default function HomePage() {
                 >
                   {isDestroyingsandbox ? 'Destroying Sandbox...' : 'Destroy Sandbox'}
                 </ButtonUI>
+                {sandboxId && (
+                  <ButtonUI
+                    variant="tertiary"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (!isReconnectTestRunning) {
+                        await handleReconnectTest();
+                      }
+                    }}
+                    disabled={isReconnectTestRunning}
+                  >
+                    {isReconnectTestRunning ? 'Testing Reconnection...' : 'Test Reconnection'}
+                  </ButtonUI>
+                )}
               </div>
             </div>
           </div>

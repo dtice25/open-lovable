@@ -180,4 +180,42 @@ export default App
   getSandbox(): any {
     return this.sandbox;
   }
+
+  getSandboxId(): string | null {
+    return this.sandbox?.sandboxId || null;
+  }
+
+  async getAndClearSandbox(sandboxId: string): Promise<void> {
+    console.log(`[ComputeSandbox:getAndClearSandbox] Reconnecting to sandbox: ${sandboxId}`);
+
+    // Step 1: Reconnect to existing sandbox
+    const sandbox = await compute.sandbox.getById(sandboxId);
+
+    if (!sandbox) {
+      throw new Error(`Sandbox ${sandboxId} not found or has been destroyed`);
+    }
+
+    console.log(`[ComputeSandbox:getAndClearSandbox] Successfully reconnected to sandbox: ${sandboxId}`);
+
+    // Step 2: Check if /app exists and clear it
+    const appExists = await sandbox.filesystem.exists('app');
+    if (appExists) {
+      console.log('[ComputeSandbox:getAndClearSandbox] Removing /app directory...');
+      await sandbox.filesystem.remove('app');
+      console.log('[ComputeSandbox:getAndClearSandbox] /app directory removed successfully');
+    } else {
+      console.log('[ComputeSandbox:getAndClearSandbox] /app directory does not exist, nothing to clear');
+    }
+
+    // Store the sandbox reference for potential future use
+    this.sandbox = sandbox;
+    this.sandboxInfo = {
+      sandboxId,
+      url: '',
+      provider: 'e2b',
+      createdAt: new Date(),
+    };
+
+    console.log('[ComputeSandbox:getAndClearSandbox] Completed successfully');
+  }
 }

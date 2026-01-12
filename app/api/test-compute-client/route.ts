@@ -21,9 +21,12 @@ export async function POST() {
     await helper.createSandboxAndTest();
     console.log('[test-compute-client] Completed ComputeClient test.');
 
+    const sandboxId = helper.getSandboxId();
+
     return NextResponse.json({
       success: true,
       message: 'Created E2B sandbox and ran ComputeClient. Check server logs for details.',
+      sandboxId,
     });
   } catch (error) {
     console.error('[test-compute-client] Error:', error);
