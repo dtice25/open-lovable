@@ -189,7 +189,17 @@ export default App
     console.log(`[ComputeSandbox:getAndClearSandbox] Reconnecting to sandbox: ${sandboxId}`);
 
     // Step 1: Reconnect to existing sandbox
-    const sandbox = await compute.sandbox.getById(sandboxId);
+    let sandbox: any = null;
+    try {
+      sandbox = await Promise.race([
+        compute.sandbox.getById(sandboxId),
+        new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('getById timed out after 10s')), 10000)
+        )
+      ]);
+    } catch (e) {
+      throw new Error(`Sandbox ${sandboxId} not found or has been destroyed: ${(e as Error).message}`);
+    }
 
     if (!sandbox) {
       throw new Error(`Sandbox ${sandboxId} not found or has been destroyed`);
