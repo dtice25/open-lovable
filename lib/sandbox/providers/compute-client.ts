@@ -28,7 +28,7 @@ export class ComputeSandbox {
 
     // Step 1: Create /app directory and scaffold minimal Vite app
     console.log('[ComputeSandbox:testComputeClient] Creating /app directory...');
-    await this.sandbox.runCommand('mkdir', ['-p', 'app/src']);
+    await this.sandbox.runCommand('mkdir -p app/src');
     // package.json
     const packageJson = {
       name: 'test-vite-app',
@@ -62,7 +62,7 @@ export default defineConfig({
     port: ${appConfig.baseProviderConfig.vitePort},
     strictPort: true,
     hmr: false,
-    allowedHosts: ['.e2b.app', '.e2b.dev', '.vercel.run', 'localhost', '127.0.0.1', '.computesdk.com', '.proxy.daytona.work', '.modal.host', '.modal.run'],
+    allowedHosts: ['.e2b.app', '.e2b.dev', '.vercel.run', 'localhost', '127.0.0.1', '.computesdk.com', '.proxy.daytona.work', '.modal.host', '.modal.run', '.railway.com'],
   },
 })
 `;
@@ -117,7 +117,7 @@ export default App
 
     // Step 2: Install dependencies    
     console.log('[ComputeSandbox:testComputeClient] Running npm install in app/');
-    const installResult = await this.sandbox.runCommand('bash', ['-c', 'cd app && npm install']);
+    const installResult = await this.sandbox.runCommand('cd app && npm install');
     console.log('[ComputeSandbox:testComputeClient] npm install exitCode:', installResult.exitCode);
     if (installResult.stdout) {
       console.log('[ComputeSandbox:testComputeClient] npm install stdout:', installResult.stdout.substring(0, 500));
@@ -128,7 +128,7 @@ export default App
 
     // Step 3: Start Vite dev server (background process)
     console.log('[ComputeSandbox:testComputeClient] Starting Vite dev server...');
-    this.sandbox.runCommand('bash', ['-c', 'cd app && npm run dev > vite.log 2>&1'], {
+    this.sandbox.runCommand('cd app && npm run dev > vite.log 2>&1', {
       background: true,
     }).catch((e: any) => {
       console.error('[ComputeSandbox:testComputeClient] npm run dev Vite error:', e.message);
