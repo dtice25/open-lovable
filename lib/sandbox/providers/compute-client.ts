@@ -13,7 +13,7 @@ export class ComputeSandbox {
     this.sandboxInfo = {
       sandboxId,
       url: '',
-      provider: 'e2b',
+      provider: this.sandbox.provider,
       createdAt: new Date(),
     };
 
@@ -222,7 +222,7 @@ export default App
     this.sandboxInfo = {
       sandboxId,
       url: '',
-      provider: 'e2b',
+      provider: sandbox.provider,
       createdAt: new Date(),
     };
 
