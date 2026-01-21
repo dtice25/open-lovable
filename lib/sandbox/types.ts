@@ -1,0 +1,46 @@
+export interface SandboxFile {
+  path: string;
+  content: string;
+  lastModified?: number;
+}
+
+export interface SandboxInfo {
+  sandboxId: string;
+  url: string;
+  provider: 'compute';
+  createdAt: Date;
+}
+
+export interface CommandResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  success: boolean;
+}
+
+export abstract class SandboxProvider {
+  protected sandbox: any;
+  protected sandboxInfo: SandboxInfo | null = null;
+
+  abstract createSandbox(): Promise<SandboxInfo>;
+  abstract runCommand(command: string): Promise<CommandResult>;
+  abstract writeFile(path: string, content: string): Promise<void>;
+  abstract readFile(path: string): Promise<string>;
+  abstract listFiles(directory?: string): Promise<string[]>;
+  abstract installPackages(packages: string[]): Promise<CommandResult>;
+  abstract getSandboxUrl(): string | null;
+  abstract getSandboxInfo(): SandboxInfo | null;
+  abstract terminate(): Promise<void>;
+  abstract isAlive(): boolean;
+  
+  // Optional methods that providers can override
+  async setupViteApp(): Promise<void> {
+    // Default implementation for setting up a Vite React app
+    throw new Error('setupViteApp not implemented for this provider');
+  }
+  
+  async restartViteServer(): Promise<void> {
+    // Default implementation for restarting Vite
+    throw new Error('restartViteServer not implemented for this provider');
+  }
+}
