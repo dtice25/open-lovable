@@ -1,7 +1,5 @@
 # Open Lovable
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/open-lovable?referralCode=-WK0PF&utm_medium=integration&utm_source=template&utm_campaign=generic)
-
 Chat with AI to build React apps instantly. An example app made by the [Firecrawl](https://firecrawl.dev/?ref=open-lovable-github) team. For a complete cloud solution, check out [Lovable.dev](https://lovable.dev/) ❤️.
 
 <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmZtaHFleGRsMTNlaWNydGdianI4NGQ4dHhyZjB0d2VkcjRyeXBucCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ZFVLWMa6dVskQX0qu1/giphy.gif" alt="Open Lovable Demo" width="100%"/>
@@ -38,7 +36,7 @@ GROQ_API_KEY=your_groq_api_key            # https://console.groq.com
 MORPH_API_KEY=your_morphllm_api_key    # https://morphllm.com/dashboard
 
 # =================================================================
-# SANDBOX PROVIDER - Choose Vercel, E2B, Modal, or Daytona
+# SANDBOX PROVIDER - Choose Vercel, E2B, Modal, Daytona, Railway, Namespace, or Blaxel
 # =================================================================
 
 # Option 1: Vercel Sandbox (default)
@@ -67,6 +65,13 @@ VERCEL_OIDC_TOKEN=auto_generated_by_vercel_env_pull
 # RAILWAY_API_KEY=your_railway_api_key       # https://railway.com/deploy/sandbox
 # RAILWAY_PROJECT_ID=your_railway_project_id
 # RAILWAY_ENVIRONMENT_ID=your_railway_environment_id
+
+# Option 6: Namespace Sandbox
+# NSC_TOKEN=your_nsc_token      # https://namespace.so/
+
+# Option 7: Blaxel Sandbox
+# BL_API_KEY=your_blaxel_api_key      # https://blaxel.ai/
+# BL_WORKSPACE=your_blaxel_workspace
 ```
 
 3. **Run**
